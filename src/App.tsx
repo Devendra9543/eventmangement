@@ -8,8 +8,8 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 
 // Contexts
 import { AuthProvider } from "./contexts/AuthContext";
-import { EventProvider } from "./contexts/EventContext";
 import { NotificationProvider } from "./contexts/NotificationContext";
+import { EventProvider } from "./contexts/EventContext";
 
 // Pages
 import LoginPage from "./pages/auth/LoginPage";
@@ -37,8 +37,8 @@ const App = () => (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <AuthProvider>
-          <EventProvider>
-            <NotificationProvider>
+          <NotificationProvider>
+            <EventProvider>
               <Toaster />
               <Sonner />
               <BrowserRouter>
@@ -70,8 +70,8 @@ const App = () => (
                   <Route path="*" element={<NotFound />} />
                 </Routes>
               </BrowserRouter>
-            </NotificationProvider>
-          </EventProvider>
+            </EventProvider>
+          </NotificationProvider>
         </AuthProvider>
       </TooltipProvider>
     </QueryClientProvider>

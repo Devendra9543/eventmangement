@@ -1,7 +1,6 @@
 
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { useAuth } from './AuthContext';
-import { useNotifications } from './NotificationContext';
 
 export type ClubType = 'CSI' | 'ISTE' | 'DEBUGGERS';
 export type CategoryType = 'Sports' | 'Technical' | 'Cultural';
@@ -45,6 +44,7 @@ interface EventContextType {
   getEventsByCategory: (category: CategoryType) => Event[];
   getRegistrationsByEvent: (eventId: string) => Registration[];
   getEventById: (eventId: string) => Event | undefined;
+  triggerEventNotification: (title: string, message: string, eventId?: string) => void;
 }
 
 const EventContext = createContext<EventContextType | undefined>(undefined);
@@ -123,11 +123,24 @@ const mockRegistrations: Registration[] = [
 export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [events, setEvents] = useState<Event[]>(mockEvents);
   const [registrations, setRegistrations] = useState<Registration[]>(mockRegistrations);
-  const { addNotification } = useNotifications();
   const { user } = useAuth();
   
   const clubs: ClubType[] = ['CSI', 'ISTE', 'DEBUGGERS'];
   const categories: CategoryType[] = ['Sports', 'Technical', 'Cultural'];
+
+  // Event used to communicate with NotificationContext
+  const [notificationEvent, setNotificationEvent] = useState<CustomEvent | null>(null);
+
+  // Function to trigger notifications without direct dependency
+  const triggerEventNotification = (title: string, message: string, eventId?: string) => {
+    // Create a custom event that NotificationContext can listen for
+    const event = new CustomEvent('event-notification', {
+      detail: { title, message, eventId, userId: user?.id }
+    });
+    
+    // Dispatch the event
+    document.dispatchEvent(event);
+  };
 
   // Effect to sync with backend (in a real app)
   useEffect(() => {
@@ -158,13 +171,12 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       
       // Notify all students about the new event
       if (user?.userType === 'organizer') {
-        // In a real app, this would be handled by the backend
-        // For now, we simulate this behavior client-side
-        addNotification({
-          title: `New Event: ${newEvent.title}`,
-          message: `${user.clubName} just posted a new event: ${newEvent.title}. Registration closes on ${newEvent.dueDate}.`,
-          eventId: newEvent.id
-        });
+        // Use the new notification method
+        triggerEventNotification(
+          `New Event: ${newEvent.title}`,
+          `${user.clubName} just posted a new event: ${newEvent.title}. Registration closes on ${newEvent.dueDate}.`,
+          newEvent.id
+        );
       }
       
       return true;
@@ -234,6 +246,13 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         )
       );
       
+      // Notify user of successful registration
+      triggerEventNotification(
+        "Registration Confirmed",
+        `You have successfully registered for ${event.title}`,
+        eventId
+      );
+      
       return true;
     } catch (error) {
       console.error('Register for event error:', error);
@@ -271,7 +290,8 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         getEventsByClub,
         getEventsByCategory,
         getRegistrationsByEvent,
-        getEventById
+        getEventById,
+        triggerEventNotification
       }}
     >
       {children}

@@ -1,6 +1,4 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
-import { useEvents, Event } from './EventContext';
 import { useAuth } from './AuthContext';
 
 interface Notification {
@@ -26,7 +24,6 @@ const NotificationContext = createContext<NotificationContextType | undefined>(u
 
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
-  const { events } = useEvents();
   const { user } = useAuth();
   
   // Load notifications from localStorage on startup
@@ -44,55 +41,36 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   
   const unreadCount = notifications.filter(n => !n.read && (!n.userId || n.userId === user?.id)).length;
 
-  // Generate event notifications when events are coming up
+  // Listen for notifications from the EventContext
+  useEffect(() => {
+    const handleEventNotification = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      const { title, message, eventId, userId } = customEvent.detail;
+      
+      addNotification({
+        title,
+        message,
+        eventId,
+        userId
+      });
+    };
+    
+    // Add event listener
+    document.addEventListener('event-notification', handleEventNotification);
+    
+    // Clean up
+    return () => {
+      document.removeEventListener('event-notification', handleEventNotification);
+    };
+  }, [user]);
+
+  // Generate automatic notifications for events
   useEffect(() => {
     if (!user) return;
 
-    const today = new Date();
-    const threeDaysFromNow = new Date();
-    threeDaysFromNow.setDate(today.getDate() + 3);
-
-    // Check for upcoming events
-    events.forEach(event => {
-      const eventDate = new Date(event.date);
-      
-      // If event is within 3 days and we don't have a notification for it
-      if (eventDate > today && eventDate <= threeDaysFromNow) {
-        const existingNotification = notifications.find(
-          n => n.eventId === event.id && n.title.includes('Upcoming Event')
-        );
-        
-        if (!existingNotification) {
-          addNotification({
-            title: 'Upcoming Event',
-            message: `The event "${event.title}" is happening in ${Math.ceil((eventDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24))} days.`,
-            userId: user.id,
-            eventId: event.id
-          });
-        }
-      }
-      
-      // If registration due date is approaching
-      const dueDate = new Date(event.dueDate);
-      const twoDaysBeforeDue = new Date(dueDate);
-      twoDaysBeforeDue.setDate(dueDate.getDate() - 2);
-      
-      if (today >= twoDaysBeforeDue && today <= dueDate) {
-        const existingDueNotification = notifications.find(
-          n => n.eventId === event.id && n.title.includes('Registration Deadline')
-        );
-        
-        if (!existingDueNotification && user.userType === 'student') {
-          addNotification({
-            title: 'Registration Deadline Approaching',
-            message: `Last chance to register for "${event.title}". Registration closes on ${event.dueDate}.`,
-            userId: user.id,
-            eventId: event.id
-          });
-        }
-      }
-    });
-  }, [events, user, notifications]);
+    // This will be handled by listening to the custom events from EventContext
+    // We'll keep this function for any automatic notifications not tied to specific events
+  }, [user]);
 
   const markAsRead = (id: string) => {
     setNotifications(prev => 
