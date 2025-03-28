@@ -2,7 +2,8 @@
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Session, User } from '@supabase/supabase-js';
+import { Session, User as SupabaseUser } from '@supabase/supabase-js';
+import { ExtendedUser } from '@/types/auth';
 
 export type UserType = 'student' | 'organizer' | null;
 
@@ -18,7 +19,7 @@ interface Profile {
 }
 
 interface AuthContextType {
-  user: User | null;
+  user: ExtendedUser | null;
   profile: Profile | null;
   userType: UserType;
   isAuthenticated: boolean;
@@ -33,7 +34,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<ExtendedUser | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [userType, setUserType] = useState<UserType>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -44,7 +45,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         setSession(currentSession);
-        setUser(currentSession?.user ?? null);
+        
+        // Cast the user to our extended type
+        const currentUser = currentSession?.user as ExtendedUser | null;
+        setUser(currentUser);
         
         // Fetch profile if user is logged in
         if (currentSession?.user) {
@@ -58,7 +62,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
-      setUser(currentSession?.user ?? null);
+      
+      // Cast the user to our extended type
+      const currentUser = currentSession?.user as ExtendedUser | null;
+      setUser(currentUser);
       
       // Fetch profile if user is logged in
       if (currentSession?.user) {
@@ -85,6 +92,17 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       if (data) {
         setProfile(data as Profile);
         setUserType(data.user_type);
+        
+        // Update our extended user with additional properties
+        setUser(prevUser => {
+          if (!prevUser) return null;
+          return {
+            ...prevUser,
+            userType: data.user_type,
+            fullName: data.full_name,
+            clubName: data.club_name
+          };
+        });
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);

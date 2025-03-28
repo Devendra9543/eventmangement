@@ -3,15 +3,17 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useEvents } from '../../contexts/EventContext';
+import { ExtendedUser } from '@/types/auth';
 import PageHeader from '../../components/common/PageHeader';
 import BottomNavigation from '../../components/common/BottomNavigation';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import EventCard from '../../components/common/EventCard';
 
 const StudentDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { events, clubs } = useEvents();
+  const extendedUser = user as ExtendedUser | null;
   
   // Get recent events
   const upcomingEvents = events
@@ -26,7 +28,7 @@ const StudentDashboard = () => {
   return (
     <div className="min-h-screen pb-16 bg-gray-50">
       <PageHeader 
-        title={`Hi, ${user?.fullName?.split(' ')[0] || 'Student'}`}
+        title={`Hi, ${extendedUser?.fullName?.split(' ')[0] || 'Student'}`}
         showNotifications
       />
       

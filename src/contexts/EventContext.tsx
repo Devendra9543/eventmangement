@@ -1,6 +1,6 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { ExtendedUser } from '@/types/auth';
 
 export type ClubType = 'CSI' | 'ISTE' | 'DEBUGGERS';
 export type CategoryType = 'Sports' | 'Technical' | 'Cultural';
@@ -170,11 +170,12 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       setEvents(prevEvents => [...prevEvents, newEvent]);
       
       // Notify all students about the new event
-      if (user?.userType === 'organizer') {
+      const extendedUser = user as ExtendedUser | null;
+      if (extendedUser?.userType === 'organizer') {
         // Use the new notification method
         triggerEventNotification(
           `New Event: ${newEvent.title}`,
-          `${user.clubName} just posted a new event: ${newEvent.title}. Registration closes on ${newEvent.dueDate}.`,
+          `${extendedUser.clubName} just posted a new event: ${newEvent.title}. Registration closes on ${newEvent.dueDate}.`,
           newEvent.id
         );
       }

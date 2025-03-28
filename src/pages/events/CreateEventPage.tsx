@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useEvents } from '../../contexts/EventContext';
+import { ExtendedUser } from '@/types/auth';
 import { useToast } from '@/hooks/use-toast';
 import PageHeader from '@/components/common/PageHeader';
 import BottomNavigation from '@/components/common/BottomNavigation';
@@ -20,6 +21,7 @@ import {
 const CreateEventPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const extendedUser = user as ExtendedUser | null;
   const { createEvent, categories } = useEvents();
   const { toast } = useToast();
   
@@ -50,7 +52,7 @@ const CreateEventPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user || user.userType !== 'organizer' || !user.clubName) {
+    if (!user || extendedUser?.userType !== 'organizer' || !extendedUser?.clubName) {
       toast({
         title: 'Error',
         description: 'You must be logged in as an organizer to create events',
@@ -103,7 +105,7 @@ const CreateEventPage = () => {
         date: formData.date,
         time: formData.time,
         location: formData.location,
-        club: user.clubName as any,
+        club: extendedUser.clubName as any,
         category: formData.category as any,
         price: Number(formData.price),
         organizerId: user.id,
