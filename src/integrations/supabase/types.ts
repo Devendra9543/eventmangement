@@ -9,6 +9,60 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      events: {
+        Row: {
+          category: string
+          club: string
+          created_at: string
+          current_attendees: number
+          date: string
+          description: string
+          due_date: string
+          id: string
+          image_url: string | null
+          location: string
+          max_attendees: number
+          organizer_id: string
+          price: number
+          time: string
+          title: string
+        }
+        Insert: {
+          category: string
+          club: string
+          created_at?: string
+          current_attendees?: number
+          date: string
+          description: string
+          due_date: string
+          id?: string
+          image_url?: string | null
+          location: string
+          max_attendees?: number
+          organizer_id: string
+          price?: number
+          time: string
+          title: string
+        }
+        Update: {
+          category?: string
+          club?: string
+          created_at?: string
+          current_attendees?: number
+          date?: string
+          description?: string
+          due_date?: string
+          id?: string
+          image_url?: string | null
+          location?: string
+          max_attendees?: number
+          organizer_id?: string
+          price?: number
+          time?: string
+          title?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           class_branch: string | null
@@ -44,6 +98,41 @@ export type Database = {
           user_type?: string | null
         }
         Relationships: []
+      }
+      registrations: {
+        Row: {
+          event_id: string
+          id: string
+          payment_status: string
+          registration_date: string
+          user_id: string
+          user_name: string
+        }
+        Insert: {
+          event_id: string
+          id?: string
+          payment_status?: string
+          registration_date?: string
+          user_id: string
+          user_name: string
+        }
+        Update: {
+          event_id?: string
+          id?: string
+          payment_status?: string
+          registration_date?: string
+          user_id?: string
+          user_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "registrations_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
