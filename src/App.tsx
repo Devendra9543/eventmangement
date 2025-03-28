@@ -1,4 +1,5 @@
 
+import React from 'react';
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -28,50 +29,53 @@ import ManageRegistrationsPage from "./pages/organizer/ManageRegistrationsPage";
 import AnalyticsPage from "./pages/organizer/AnalyticsPage";
 import NotFound from "./pages/NotFound";
 
+// Create a new QueryClient instance outside the component
 const queryClient = new QueryClient();
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <AuthProvider>
-        <EventProvider>
-          <NotificationProvider>
-            <Toaster />
-            <Sonner />
-            <BrowserRouter>
-              <Routes>
-                {/* Auth Routes */}
-                <Route path="/" element={<UserTypeSelection />} />
-                <Route path="/login" element={<LoginPage />} />
-                <Route path="/signup/student" element={<StudentSignupPage />} />
-                <Route path="/signup/organizer" element={<OrganizerSignupPage />} />
-                
-                {/* Student Routes */}
-                <Route path="/dashboard/student" element={<StudentDashboard />} />
-                <Route path="/clubs/:clubId" element={<ClubEventsPage />} />
-                <Route path="/category/:clubId/:categoryId" element={<EventCategoryPage />} />
-                <Route path="/event/:eventId" element={<EventDetailsPage />} />
-                
-                {/* Organizer Routes */}
-                <Route path="/dashboard/organizer" element={<OrganizerDashboard />} />
-                <Route path="/create-event" element={<CreateEventPage />} />
-                <Route path="/manage-events" element={<ManageEventsPage />} />
-                <Route path="/manage-registrations/:eventId" element={<ManageRegistrationsPage />} />
-                <Route path="/analytics" element={<AnalyticsPage />} />
-                
-                {/* Common Routes */}
-                <Route path="/profile" element={<ProfilePage />} />
-                <Route path="/notifications" element={<NotificationsPage />} />
-                
-                {/* 404 Route */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </BrowserRouter>
-          </NotificationProvider>
-        </EventProvider>
-      </AuthProvider>
-    </TooltipProvider>
-  </QueryClientProvider>
+  <React.StrictMode>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <AuthProvider>
+          <EventProvider>
+            <NotificationProvider>
+              <Toaster />
+              <Sonner />
+              <BrowserRouter>
+                <Routes>
+                  {/* Auth Routes */}
+                  <Route path="/" element={<UserTypeSelection />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/signup/student" element={<StudentSignupPage />} />
+                  <Route path="/signup/organizer" element={<OrganizerSignupPage />} />
+                  
+                  {/* Student Routes */}
+                  <Route path="/dashboard/student" element={<StudentDashboard />} />
+                  <Route path="/clubs/:clubId" element={<ClubEventsPage />} />
+                  <Route path="/category/:clubId/:categoryId" element={<EventCategoryPage />} />
+                  <Route path="/event/:eventId" element={<EventDetailsPage />} />
+                  
+                  {/* Organizer Routes */}
+                  <Route path="/dashboard/organizer" element={<OrganizerDashboard />} />
+                  <Route path="/create-event" element={<CreateEventPage />} />
+                  <Route path="/manage-events" element={<ManageEventsPage />} />
+                  <Route path="/manage-registrations/:eventId" element={<ManageRegistrationsPage />} />
+                  <Route path="/analytics" element={<AnalyticsPage />} />
+                  
+                  {/* Common Routes */}
+                  <Route path="/profile" element={<ProfilePage />} />
+                  <Route path="/notifications" element={<NotificationsPage />} />
+                  
+                  {/* 404 Route */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </BrowserRouter>
+            </NotificationProvider>
+          </EventProvider>
+        </AuthProvider>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </React.StrictMode>
 );
 
 export default App;
