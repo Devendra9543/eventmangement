@@ -1,101 +1,95 @@
 
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { Session, User } from '@supabase/supabase-js';
 
 export type UserType = 'student' | 'organizer' | null;
 
-interface User {
+interface Profile {
   id: string;
-  fullName: string;
+  full_name: string;
   email: string;
   mobile: string;
-  userType: UserType;
-  clubName?: string;  // Only for organizers
-  classBranch?: string;  // Only for students
-  createdAt?: string;
+  user_type: UserType;
+  club_name?: string;  // Only for organizers
+  class_branch?: string;  // Only for students
+  created_at?: string;
 }
 
 interface AuthContextType {
   user: User | null;
+  profile: Profile | null;
   userType: UserType;
   isAuthenticated: boolean;
   login: (email: string, password: string, userType: UserType) => Promise<boolean>;
-  signup: (userData: Omit<User, 'id' | 'createdAt'>) => Promise<boolean>;
-  logout: () => void;
+  signup: (userData: Omit<Profile, 'id' | 'created_at'>, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
   setUserTypeBeforeAuth: (type: UserType) => void;
-  updateUser: (userData: Partial<User>) => Promise<boolean>;
+  updateUser: (userData: Partial<Profile>) => Promise<boolean>;
+  session: Session | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Simulate a backend API service
-const authService = {
-  // In a real app, these would be actual API calls
-  login: async (email: string, password: string, userType: UserType): Promise<User | null> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Check local storage for users (simulating a database)
-    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    const user = storedUsers.find((u: User) => 
-      u.email === email && u.userType === userType
-    );
-    
-    if (user) {
-      // In a real app, we would verify the password properly here
-      return user;
-    }
-    
-    return null;
-  },
-  
-  signup: async (userData: Omit<User, 'id' | 'createdAt'>): Promise<User> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Generate an ID and created timestamp
-    const newUser: User = {
-      ...userData,
-      id: Math.random().toString(36).substring(7),
-      createdAt: new Date().toISOString()
-    };
-    
-    // Store in local storage (simulating a database)
-    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    localStorage.setItem('users', JSON.stringify([...storedUsers, newUser]));
-    
-    return newUser;
-  },
-  
-  updateUser: async (userId: string, userData: Partial<User>): Promise<boolean> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 800));
-    
-    // Update user in local storage
-    const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-    const updatedUsers = storedUsers.map((user: User) => 
-      user.id === userId ? { ...user, ...userData } : user
-    );
-    
-    localStorage.setItem('users', JSON.stringify(updatedUsers));
-    return true;
-  }
-};
-
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [userType, setUserType] = useState<UserType>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const { toast } = useToast();
 
-  // Check for existing session on startup
   useEffect(() => {
-    const storedUser = localStorage.getItem('currentUser');
-    if (storedUser) {
-      const parsedUser = JSON.parse(storedUser);
-      setUser(parsedUser);
-      setUserType(parsedUser.userType);
-    }
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        
+        // Fetch profile if user is logged in
+        if (currentSession?.user) {
+          await fetchUserProfile(currentSession.user.id);
+        } else {
+          setProfile(null);
+        }
+      }
+    );
+
+    // THEN check for existing session
+    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
+      setSession(currentSession);
+      setUser(currentSession?.user ?? null);
+      
+      // Fetch profile if user is logged in
+      if (currentSession?.user) {
+        fetchUserProfile(currentSession.user.id);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
+
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single();
+      
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return;
+      }
+      
+      if (data) {
+        setProfile(data as Profile);
+        setUserType(data.user_type);
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
 
   const setUserTypeBeforeAuth = (type: UserType) => {
     setUserType(type);
@@ -103,12 +97,51 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const login = async (email: string, password: string, type: UserType): Promise<boolean> => {
     try {
-      const loggedInUser = await authService.login(email, password, type);
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
       
-      if (loggedInUser) {
-        setUser(loggedInUser);
-        // Store the current user in localStorage
-        localStorage.setItem('currentUser', JSON.stringify(loggedInUser));
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message || "Invalid credentials",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      if (data.user) {
+        // Fetch user profile
+        const { data: profileData, error: profileError } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('id', data.user.id)
+          .single();
+        
+        if (profileError || !profileData) {
+          toast({
+            title: "Error",
+            description: "Unable to fetch user profile",
+            variant: "destructive",
+          });
+          return false;
+        }
+        
+        // Check if user type matches
+        if (profileData.user_type !== type) {
+          toast({
+            title: "Error",
+            description: `This account is registered as a ${profileData.user_type}, not as a ${type}`,
+            variant: "destructive",
+          });
+          
+          // Sign out since user type doesn't match
+          await supabase.auth.signOut();
+          return false;
+        }
+        
+        setProfile(profileData as Profile);
         
         toast({
           title: "Success",
@@ -118,44 +151,64 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return true;
       }
       
-      toast({
-        title: "Error",
-        description: "Invalid credentials",
-        variant: "destructive",
-      });
-      
       return false;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Login error:', error);
       toast({
         title: "Error",
-        description: "Login failed. Please try again.",
+        description: error.message || "Login failed. Please try again.",
         variant: "destructive",
       });
       return false;
     }
   };
 
-  const signup = async (userData: Omit<User, 'id' | 'createdAt'>): Promise<boolean> => {
+  const signup = async (userData: Omit<Profile, 'id' | 'created_at'>, password: string): Promise<boolean> => {
     try {
-      // Check if user with that email already exists
-      const storedUsers = JSON.parse(localStorage.getItem('users') || '[]');
-      const existingUser = storedUsers.find((u: User) => u.email === userData.email);
+      // Sign up with Supabase Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: userData.email,
+        password: password,
+        options: {
+          data: {
+            full_name: userData.full_name,
+            user_type: userData.user_type,
+          },
+        }
+      });
       
-      if (existingUser) {
+      if (authError) {
         toast({
           title: "Error",
-          description: "A user with this email already exists",
+          description: authError.message || "Signup failed",
           variant: "destructive",
         });
         return false;
       }
       
-      const newUser = await authService.signup(userData);
-      setUser(newUser);
+      if (!authData.user) {
+        toast({
+          title: "Error",
+          description: "Failed to create account",
+          variant: "destructive",
+        });
+        return false;
+      }
       
-      // Store the current user in localStorage
-      localStorage.setItem('currentUser', JSON.stringify(newUser));
+      // Update additional profile fields since the trigger will create the basic profile
+      const { error: updateError } = await supabase
+        .from('profiles')
+        .update({
+          mobile: userData.mobile,
+          club_name: userData.club_name,
+          class_branch: userData.class_branch,
+        })
+        .eq('id', authData.user.id);
+      
+      if (updateError) {
+        console.error('Error updating profile:', updateError);
+        // Don't return false here, as the user is created, just the additional fields failed to update
+      }
       
       toast({
         title: "Success",
@@ -163,54 +216,62 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
       
       return true;
-    } catch (error) {
+    } catch (error: any) {
       console.error('Signup error:', error);
       toast({
         title: "Error",
-        description: "Signup failed. Please try again.",
+        description: error.message || "Signup failed. Please try again.",
         variant: "destructive",
       });
       return false;
     }
   };
 
-  const updateUser = async (userData: Partial<User>): Promise<boolean> => {
+  const updateUser = async (userData: Partial<Profile>): Promise<boolean> => {
     if (!user) return false;
     
     try {
-      const success = await authService.updateUser(user.id, userData);
+      const { error } = await supabase
+        .from('profiles')
+        .update(userData)
+        .eq('id', user.id);
       
-      if (success) {
-        const updatedUser = { ...user, ...userData };
-        setUser(updatedUser);
-        
-        // Update in localStorage
-        localStorage.setItem('currentUser', JSON.stringify(updatedUser));
-        
+      if (error) {
         toast({
-          title: "Success",
-          description: "Profile updated successfully",
+          title: "Error",
+          description: error.message || "Failed to update profile",
+          variant: "destructive",
         });
-        
-        return true;
+        return false;
       }
       
-      return false;
-    } catch (error) {
+      // Update local state
+      if (profile) {
+        setProfile({ ...profile, ...userData });
+      }
+      
+      toast({
+        title: "Success",
+        description: "Profile updated successfully",
+      });
+      
+      return true;
+    } catch (error: any) {
       console.error('Update user error:', error);
       toast({
         title: "Error",
-        description: "Failed to update profile",
+        description: error.message || "Failed to update profile",
         variant: "destructive",
       });
       return false;
     }
   };
 
-  const logout = () => {
+  const logout = async () => {
+    await supabase.auth.signOut();
     setUser(null);
-    // Remove from localStorage
-    localStorage.removeItem('currentUser');
+    setProfile(null);
+    setSession(null);
     
     toast({
       title: "Success",
@@ -222,13 +283,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     <AuthContext.Provider
       value={{
         user,
+        profile,
         userType,
         isAuthenticated: !!user,
         login,
         signup,
         logout,
         setUserTypeBeforeAuth,
-        updateUser
+        updateUser,
+        session
       }}
     >
       {children}

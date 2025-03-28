@@ -1,6 +1,6 @@
 
-import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -9,11 +9,20 @@ import { useToast } from '@/hooks/use-toast';
 
 const LoginPage = () => {
   const navigate = useNavigate();
-  const { login, userType } = useAuth();
+  const location = useLocation();
+  const { login, userType, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      const redirectPath = userType === 'student' ? '/dashboard/student' : '/dashboard/organizer';
+      navigate(redirectPath, { replace: true });
+    }
+  }, [isAuthenticated, userType, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,24 +39,13 @@ const LoginPage = () => {
     setIsLoading(true);
     
     try {
-      const success = await login(email, password, userType);
+      const success = await login(email, password, userType as any);
       
       if (success) {
-        toast({
-          title: 'Success',
-          description: 'Login successful',
-        });
-        
-        // Redirect based on user type
-        navigate(userType === 'student' ? '/dashboard/student' : '/dashboard/organizer');
-      } else {
-        toast({
-          title: 'Error',
-          description: 'Invalid credentials',
-          variant: 'destructive',
-        });
+        // Redirect will happen automatically via the useEffect above
       }
     } catch (error) {
+      console.error(error);
       toast({
         title: 'Error',
         description: 'Something went wrong',

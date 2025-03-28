@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -9,18 +9,25 @@ import { useToast } from '@/hooks/use-toast';
 
 const StudentSignupPage = () => {
   const navigate = useNavigate();
-  const { signup } = useAuth();
+  const { signup, isAuthenticated, userType } = useAuth();
   const { toast } = useToast();
   
   const [formData, setFormData] = useState({
-    fullName: '',
+    full_name: '',
     email: '',
     mobile: '',
-    classBranch: '',
+    class_branch: '',
     password: '',
     confirmPassword: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard/student', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -31,8 +38,8 @@ const StudentSignupPage = () => {
     e.preventDefault();
     
     // Validate form
-    if (!formData.fullName || !formData.email || !formData.mobile || 
-        !formData.classBranch || !formData.password) {
+    if (!formData.full_name || !formData.email || !formData.mobile || 
+        !formData.class_branch || !formData.password) {
       toast({
         title: 'Error',
         description: 'Please fill all fields',
@@ -54,12 +61,12 @@ const StudentSignupPage = () => {
     
     try {
       const success = await signup({
-        fullName: formData.fullName,
+        full_name: formData.full_name,
         email: formData.email,
         mobile: formData.mobile,
-        classBranch: formData.classBranch,
-        userType: 'student'
-      });
+        class_branch: formData.class_branch,
+        user_type: 'student'
+      }, formData.password);
       
       if (success) {
         toast({
@@ -67,12 +74,6 @@ const StudentSignupPage = () => {
           description: 'Account created successfully',
         });
         navigate('/dashboard/student');
-      } else {
-        toast({
-          title: 'Error',
-          description: 'Failed to create account',
-          variant: 'destructive',
-        });
       }
     } catch (error) {
       toast({
@@ -106,14 +107,14 @@ const StudentSignupPage = () => {
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700" htmlFor="fullName">
+              <label className="text-sm font-medium text-gray-700" htmlFor="full_name">
                 Full Name
               </label>
               <Input
-                id="fullName"
-                name="fullName"
+                id="full_name"
+                name="full_name"
                 type="text"
-                value={formData.fullName}
+                value={formData.full_name}
                 onChange={handleChange}
                 placeholder="Enter your full name"
                 className="w-full p-3"
@@ -154,14 +155,14 @@ const StudentSignupPage = () => {
             </div>
             
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700" htmlFor="classBranch">
+              <label className="text-sm font-medium text-gray-700" htmlFor="class_branch">
                 Class Branch
               </label>
               <Input
-                id="classBranch"
-                name="classBranch"
+                id="class_branch"
+                name="class_branch"
                 type="text"
-                value={formData.classBranch}
+                value={formData.class_branch}
                 onChange={handleChange}
                 placeholder="e.g. Computer Science - 3rd Year"
                 className="w-full p-3"

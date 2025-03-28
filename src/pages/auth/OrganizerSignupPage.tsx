@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
@@ -11,19 +11,26 @@ import { useEvents } from '../../contexts/EventContext';
 
 const OrganizerSignupPage = () => {
   const navigate = useNavigate();
-  const { signup } = useAuth();
+  const { signup, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const { clubs } = useEvents();
   
   const [formData, setFormData] = useState({
-    fullName: '',
+    full_name: '',
     email: '',
     mobile: '',
-    clubName: '',
+    club_name: '',
     password: '',
     confirmPassword: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard/organizer', { replace: true });
+    }
+  }, [isAuthenticated, navigate]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -31,15 +38,15 @@ const OrganizerSignupPage = () => {
   };
 
   const handleClubChange = (value: string) => {
-    setFormData(prev => ({ ...prev, clubName: value }));
+    setFormData(prev => ({ ...prev, club_name: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate form
-    if (!formData.fullName || !formData.email || !formData.mobile || 
-        !formData.clubName || !formData.password) {
+    if (!formData.full_name || !formData.email || !formData.mobile || 
+        !formData.club_name || !formData.password) {
       toast({
         title: 'Error',
         description: 'Please fill all fields',
@@ -61,12 +68,12 @@ const OrganizerSignupPage = () => {
     
     try {
       const success = await signup({
-        fullName: formData.fullName,
+        full_name: formData.full_name,
         email: formData.email,
         mobile: formData.mobile,
-        clubName: formData.clubName as any,
-        userType: 'organizer'
-      });
+        club_name: formData.club_name,
+        user_type: 'organizer'
+      }, formData.password);
       
       if (success) {
         toast({
@@ -74,12 +81,6 @@ const OrganizerSignupPage = () => {
           description: 'Account created successfully',
         });
         navigate('/dashboard/organizer');
-      } else {
-        toast({
-          title: 'Error',
-          description: 'Failed to create account',
-          variant: 'destructive',
-        });
       }
     } catch (error) {
       toast({
@@ -113,14 +114,14 @@ const OrganizerSignupPage = () => {
           
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-2">
-              <label className="text-sm font-medium text-gray-700" htmlFor="fullName">
+              <label className="text-sm font-medium text-gray-700" htmlFor="full_name">
                 Full Name
               </label>
               <Input
-                id="fullName"
-                name="fullName"
+                id="full_name"
+                name="full_name"
                 type="text"
-                value={formData.fullName}
+                value={formData.full_name}
                 onChange={handleChange}
                 placeholder="Enter your full name"
                 className="w-full p-3"
