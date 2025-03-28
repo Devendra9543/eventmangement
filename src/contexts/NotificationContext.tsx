@@ -29,6 +29,19 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   const { events } = useEvents();
   const { user } = useAuth();
   
+  // Load notifications from localStorage on startup
+  useEffect(() => {
+    const storedNotifications = localStorage.getItem('notifications');
+    if (storedNotifications) {
+      setNotifications(JSON.parse(storedNotifications));
+    }
+  }, []);
+  
+  // Save notifications to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem('notifications', JSON.stringify(notifications));
+  }, [notifications]);
+  
   const unreadCount = notifications.filter(n => !n.read && (!n.userId || n.userId === user?.id)).length;
 
   // Generate event notifications when events are coming up
@@ -58,8 +71,28 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
           });
         }
       }
+      
+      // If registration due date is approaching
+      const dueDate = new Date(event.dueDate);
+      const twoDaysBeforeDue = new Date(dueDate);
+      twoDaysBeforeDue.setDate(dueDate.getDate() - 2);
+      
+      if (today >= twoDaysBeforeDue && today <= dueDate) {
+        const existingDueNotification = notifications.find(
+          n => n.eventId === event.id && n.title.includes('Registration Deadline')
+        );
+        
+        if (!existingDueNotification && user.userType === 'student') {
+          addNotification({
+            title: 'Registration Deadline Approaching',
+            message: `Last chance to register for "${event.title}". Registration closes on ${event.dueDate}.`,
+            userId: user.id,
+            eventId: event.id
+          });
+        }
+      }
     });
-  }, [events, user]);
+  }, [events, user, notifications]);
 
   const markAsRead = (id: string) => {
     setNotifications(prev => 

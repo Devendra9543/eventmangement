@@ -1,137 +1,272 @@
 
-import React from 'react';
+import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../contexts/AuthContext';
+import { useEvents } from '../../contexts/EventContext';
+import { useToast } from '@/hooks/use-toast';
 import PageHeader from '@/components/common/PageHeader';
 import BottomNavigation from '@/components/common/BottomNavigation';
-import { Calendar, Clock, MapPin, Tag, AlertCircle, CreditCard, Users } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 
 const CreateEventPage = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const { createEvent, categories } = useEvents();
+  const { toast } = useToast();
+  
+  const [formData, setFormData] = useState({
+    title: '',
+    description: '',
+    date: '',
+    time: '',
+    location: '',
+    category: '',
+    price: '',
+    maxAttendees: '',
+    dueDate: '', // Added due date field
+    imageUrl: '/assets/events/default.jpg', // Default image
+  });
+  
+  const [isLoading, setIsLoading] = useState(false);
+  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleSelectChange = (name: string, value: string) => {
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user || user.userType !== 'organizer' || !user.clubName) {
+      toast({
+        title: 'Error',
+        description: 'You must be logged in as an organizer to create events',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Validate all fields
+    if (!formData.title || !formData.description || !formData.date || 
+        !formData.time || !formData.location || !formData.category || 
+        !formData.price || !formData.maxAttendees || !formData.dueDate) {
+      toast({
+        title: 'Error',
+        description: 'Please fill in all required fields',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Validate dates
+    const eventDate = new Date(formData.date);
+    const dueDate = new Date(formData.dueDate);
+    const today = new Date();
+    
+    if (dueDate < today) {
+      toast({
+        title: 'Error',
+        description: 'Due date cannot be in the past',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    if (eventDate <= dueDate) {
+      toast({
+        title: 'Error',
+        description: 'Due date must be before the event date',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    setIsLoading(true);
+    
+    try {
+      const success = await createEvent({
+        title: formData.title,
+        description: formData.description,
+        date: formData.date,
+        time: formData.time,
+        location: formData.location,
+        club: user.clubName as any,
+        category: formData.category as any,
+        price: Number(formData.price),
+        organizerId: user.id,
+        maxAttendees: Number(formData.maxAttendees),
+        currentAttendees: 0,
+        imageUrl: formData.imageUrl,
+        dueDate: formData.dueDate, // Added due date
+      });
+      
+      if (success) {
+        toast({
+          title: 'Success',
+          description: 'Event created successfully',
+        });
+        navigate('/manage-events');
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to create event',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'An unexpected error occurred',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   return (
     <div className="min-h-screen pb-16 bg-gray-50">
       <PageHeader title="Create Event" showBack={true} />
       
       <div className="p-4">
-        <form className="space-y-4">
-          {/* Event Title */}
-          <div className="bg-white p-4 rounded-lg shadow">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Event Title</label>
-            <input 
-              type="text" 
-              className="w-full p-2 border border-gray-300 rounded"
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="text-sm font-medium text-gray-700">Event Title</label>
+            <Input
+              name="title"
+              value={formData.title}
+              onChange={handleChange}
               placeholder="Enter event title"
+              required
             />
           </div>
           
-          {/* Event Description */}
-          <div className="bg-white p-4 rounded-lg shadow">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
-            <textarea 
-              className="w-full p-2 border border-gray-300 rounded"
+          <div>
+            <label className="text-sm font-medium text-gray-700">Description</label>
+            <Textarea
+              name="description"
+              value={formData.description}
+              onChange={handleChange}
+              placeholder="Enter event description"
               rows={4}
-              placeholder="Describe your event"
+              required
             />
           </div>
           
-          {/* Event Date and Time */}
-          <div className="bg-white p-4 rounded-lg shadow">
-            <div className="mb-3">
-              <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                <Calendar size={16} className="mr-1" />
-                Date
-              </label>
-              <input 
-                type="date" 
-                className="w-full p-2 border border-gray-300 rounded"
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Event Date</label>
+              <Input
+                type="date"
+                name="date"
+                value={formData.date}
+                onChange={handleChange}
+                required
               />
             </div>
             
             <div>
-              <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-                <Clock size={16} className="mr-1" />
-                Time
-              </label>
-              <div className="grid grid-cols-2 gap-2">
-                <input 
-                  type="time" 
-                  className="p-2 border border-gray-300 rounded"
-                  placeholder="Start Time"
-                />
-                <input 
-                  type="time" 
-                  className="p-2 border border-gray-300 rounded"
-                  placeholder="End Time"
-                />
-              </div>
+              <label className="text-sm font-medium text-gray-700">Event Time</label>
+              <Input
+                type="time"
+                name="time"
+                value={formData.time}
+                onChange={handleChange}
+                required
+              />
             </div>
           </div>
           
-          {/* Location */}
-          <div className="bg-white p-4 rounded-lg shadow">
-            <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-              <MapPin size={16} className="mr-1" />
-              Location
-            </label>
-            <input 
-              type="text" 
-              className="w-full p-2 border border-gray-300 rounded"
+          <div>
+            <label className="text-sm font-medium text-gray-700">Due Date for Registration</label>
+            <Input
+              type="date"
+              name="dueDate"
+              value={formData.dueDate}
+              onChange={handleChange}
+              required
+            />
+            <p className="text-xs text-gray-500 mt-1">Registration will close on this date</p>
+          </div>
+          
+          <div>
+            <label className="text-sm font-medium text-gray-700">Location</label>
+            <Input
+              name="location"
+              value={formData.location}
+              onChange={handleChange}
               placeholder="Enter event location"
+              required
             />
           </div>
           
-          {/* Category */}
-          <div className="bg-white p-4 rounded-lg shadow">
-            <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-              <Tag size={16} className="mr-1" />
-              Category
-            </label>
-            <select className="w-full p-2 border border-gray-300 rounded">
-              <option value="">Select a category</option>
-              <option value="technical">Technical</option>
-              <option value="cultural">Cultural</option>
-              <option value="sports">Sports</option>
-              <option value="workshop">Workshop</option>
-            </select>
+          <div>
+            <label className="text-sm font-medium text-gray-700">Category</label>
+            <Select 
+              onValueChange={(value) => handleSelectChange('category', value)} 
+              required
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select category" />
+              </SelectTrigger>
+              <SelectContent>
+                {categories.map((category) => (
+                  <SelectItem key={category} value={category}>
+                    {category}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
           
-          {/* Capacity */}
-          <div className="bg-white p-4 rounded-lg shadow">
-            <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-              <Users size={16} className="mr-1" />
-              Maximum Capacity
-            </label>
-            <input 
-              type="number" 
-              className="w-full p-2 border border-gray-300 rounded"
-              placeholder="Enter max participants"
-            />
-          </div>
-          
-          {/* Price */}
-          <div className="bg-white p-4 rounded-lg shadow">
-            <label className="flex items-center text-sm font-medium text-gray-700 mb-1">
-              <CreditCard size={16} className="mr-1" />
-              Registration Fee (₹)
-            </label>
-            <input 
-              type="number" 
-              className="w-full p-2 border border-gray-300 rounded"
-              placeholder="0 for free events"
-            />
-          </div>
-          
-          {/* Image Upload */}
-          <div className="bg-white p-4 rounded-lg shadow">
-            <label className="block text-sm font-medium text-gray-700 mb-1">Event Banner Image</label>
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
-              <p className="text-gray-500">Click to upload or drag and drop</p>
-              <p className="text-xs text-gray-400">PNG, JPG (max. 2MB)</p>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="text-sm font-medium text-gray-700">Price (₹)</label>
+              <Input
+                type="number"
+                name="price"
+                value={formData.price}
+                onChange={handleChange}
+                min="0"
+                placeholder="0"
+                required
+              />
+            </div>
+            
+            <div>
+              <label className="text-sm font-medium text-gray-700">Max Attendees</label>
+              <Input
+                type="number"
+                name="maxAttendees"
+                value={formData.maxAttendees}
+                onChange={handleChange}
+                min="1"
+                placeholder="50"
+                required
+              />
             </div>
           </div>
           
-          <div className="h-4"></div>
-          
-          <button type="submit" className="fixed bottom-20 left-4 right-4 bg-collegeBlue-500 text-white py-3 rounded-lg font-medium">
-            Create Event
-          </button>
+          <Button
+            type="submit"
+            className="w-full bg-collegeBlue-500 hover:bg-collegeBlue-600 text-white"
+            disabled={isLoading}
+          >
+            {isLoading ? 'Creating...' : 'Create Event'}
+          </Button>
         </form>
       </div>
       

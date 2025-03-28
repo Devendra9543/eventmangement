@@ -1,5 +1,7 @@
 
-import React, { createContext, useState, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import { useAuth } from './AuthContext';
+import { useNotifications } from './NotificationContext';
 
 export type ClubType = 'CSI' | 'ISTE' | 'DEBUGGERS';
 export type CategoryType = 'Sports' | 'Technical' | 'Cultural';
@@ -18,6 +20,7 @@ export interface Event {
   maxAttendees: number;
   currentAttendees: number;
   imageUrl?: string;
+  dueDate: string; // Added due date field
 }
 
 interface Registration {
@@ -61,7 +64,8 @@ const mockEvents: Event[] = [
     organizerId: '2',
     maxAttendees: 50,
     currentAttendees: 30,
-    imageUrl: '/assets/events/coding.jpg'
+    imageUrl: '/assets/events/coding.jpg',
+    dueDate: '2023-05-10' // Added due date
   },
   {
     id: '2',
@@ -76,7 +80,8 @@ const mockEvents: Event[] = [
     organizerId: '2',
     maxAttendees: 100,
     currentAttendees: 75,
-    imageUrl: '/assets/events/cricket.jpg'
+    imageUrl: '/assets/events/cricket.jpg',
+    dueDate: '2023-06-05' // Added due date
   },
   {
     id: '3',
@@ -91,7 +96,8 @@ const mockEvents: Event[] = [
     organizerId: '2',
     maxAttendees: 30,
     currentAttendees: 12,
-    imageUrl: '/assets/events/dance.jpg'
+    imageUrl: '/assets/events/dance.jpg',
+    dueDate: '2023-07-01' // Added due date
   },
 ];
 
@@ -117,9 +123,29 @@ const mockRegistrations: Registration[] = [
 export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [events, setEvents] = useState<Event[]>(mockEvents);
   const [registrations, setRegistrations] = useState<Registration[]>(mockRegistrations);
+  const { addNotification } = useNotifications();
+  const { user } = useAuth();
   
   const clubs: ClubType[] = ['CSI', 'ISTE', 'DEBUGGERS'];
   const categories: CategoryType[] = ['Sports', 'Technical', 'Cultural'];
+
+  // Effect to sync with backend (in a real app)
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // In a real app, this would fetch data from the backend
+        console.log("Fetching events and registrations from backend...");
+        
+        // For now we'll use our mock data
+      } catch (error) {
+        console.error("Error fetching data:", error);
+      }
+    };
+    
+    if (user) {
+      fetchData();
+    }
+  }, [user]);
 
   const createEvent = async (eventData: Omit<Event, 'id'>): Promise<boolean> => {
     try {
@@ -127,7 +153,20 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         ...eventData,
         id: Math.random().toString(36).substring(7), // Generate random ID
       };
+      
       setEvents(prevEvents => [...prevEvents, newEvent]);
+      
+      // Notify all students about the new event
+      if (user?.userType === 'organizer') {
+        // In a real app, this would be handled by the backend
+        // For now, we simulate this behavior client-side
+        addNotification({
+          title: `New Event: ${newEvent.title}`,
+          message: `${user.clubName} just posted a new event: ${newEvent.title}. Registration closes on ${newEvent.dueDate}.`,
+          eventId: newEvent.id
+        });
+      }
+      
       return true;
     } catch (error) {
       console.error('Create event error:', error);
@@ -161,6 +200,20 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
 
   const registerForEvent = async (eventId: string, userId: string, userName: string): Promise<boolean> => {
     try {
+      const event = events.find(e => e.id === eventId);
+      
+      if (!event) {
+        throw new Error("Event not found");
+      }
+      
+      // Check if due date has passed
+      const currentDate = new Date();
+      const dueDateObj = new Date(event.dueDate);
+      
+      if (currentDate > dueDateObj) {
+        throw new Error("Registration deadline has passed");
+      }
+      
       const newRegistration: Registration = {
         id: Math.random().toString(36).substring(7),
         eventId,
