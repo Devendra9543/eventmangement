@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Student, Users } from 'lucide-react';
+import { GraduationCap, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 
@@ -28,7 +28,7 @@ const UserTypeSelection = () => {
               variant="outline"
             >
               <div className="flex items-center">
-                <Student size={24} className="text-collegeBlue-500 mr-3" />
+                <GraduationCap size={24} className="text-collegeBlue-500 mr-3" />
                 <span className="text-lg font-medium">Student</span>
               </div>
               <span className="text-gray-400">→</span>
