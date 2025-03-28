@@ -2,7 +2,7 @@
 import React from 'react';
 import PageHeader from '@/components/common/PageHeader';
 import BottomNavigation from '@/components/common/BottomNavigation';
-import { User, Mail, Phone, Book, LogOut, Edit, ChevronRight } from 'lucide-react';
+import { User, Mail, Phone, Book, LogOut, Edit, ChevronRight, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 
 const ProfilePage = () => {
