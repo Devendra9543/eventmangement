@@ -90,17 +90,23 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       
       if (data) {
-        setProfile(data as Profile);
-        setUserType(data.user_type);
+        // Ensure we cast the user_type to the proper UserType
+        const profileData = {
+          ...data,
+          user_type: data.user_type as UserType
+        };
+        
+        setProfile(profileData as Profile);
+        setUserType(profileData.user_type);
         
         // Update our extended user with additional properties
         setUser(prevUser => {
           if (!prevUser) return null;
           return {
             ...prevUser,
-            userType: data.user_type,
-            fullName: data.full_name,
-            clubName: data.club_name
+            userType: profileData.user_type,
+            fullName: profileData.full_name,
+            clubName: profileData.club_name
           };
         });
       }
