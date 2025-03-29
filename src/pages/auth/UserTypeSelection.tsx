@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { GraduationCap, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import CollegeBanner from '@/components/common/CollegeBanner';
 
 const UserTypeSelection = () => {
   const navigate = useNavigate();
@@ -16,6 +17,8 @@ const UserTypeSelection = () => {
 
   return (
     <div className="min-h-screen flex flex-col bg-collegeBlue-50">
+      <CollegeBanner />
+      
       <div className="flex-1 flex flex-col justify-center items-center p-6">
         <div className="w-full max-w-md">
           <h1 className="text-3xl font-bold text-center text-collegeBlue-900 mb-2">Welcome</h1>
