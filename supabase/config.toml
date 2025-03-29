@@ -1,1 +1,6 @@
+
 project_id = "imwytmgtgusahmujhfpm"
+
+[auth]
+enable_signup = true
+enable_email_signin = true
