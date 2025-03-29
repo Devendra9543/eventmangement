@@ -5,6 +5,7 @@ import { useAuth } from '../../contexts/AuthContext';
 import { useEvents } from '../../contexts/EventContext';
 import { ExtendedUser } from '@/types/auth';
 import PageHeader from '../../components/common/PageHeader';
+import CollegeBanner from '@/components/common/CollegeBanner';
 import BottomNavigation from '../../components/common/BottomNavigation';
 import { Card, CardContent } from '@/components/ui/card';
 import EventCard from '../../components/common/EventCard';
@@ -27,6 +28,7 @@ const StudentDashboard = () => {
 
   return (
     <div className="min-h-screen pb-16 bg-gray-50">
+      <CollegeBanner />
       <PageHeader 
         title={`Hi, ${extendedUser?.fullName?.split(' ')[0] || 'Student'}`}
         showNotifications

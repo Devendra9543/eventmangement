@@ -1,11 +1,13 @@
 
 import React from 'react';
 import PageHeader from '@/components/common/PageHeader';
+import CollegeBanner from '@/components/common/CollegeBanner';
 import BottomNavigation from '@/components/common/BottomNavigation';
 
 const OrganizerDashboard = () => {
   return (
     <div className="min-h-screen pb-16 bg-gray-50">
+      <CollegeBanner />
       <PageHeader title="Organizer Dashboard" showNotifications={true} />
       
       <div className="p-4">

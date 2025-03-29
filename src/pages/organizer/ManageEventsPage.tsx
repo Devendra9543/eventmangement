@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEvents } from '@/contexts/EventContext';
 import { Event } from '@/contexts/EventContext';
 import PageHeader from '@/components/common/PageHeader';
+import CollegeBanner from '@/components/common/CollegeBanner';
 import BottomNavigation from '@/components/common/BottomNavigation';
 import { Button } from '@/components/ui/button';
 import { Loader2 } from 'lucide-react';
@@ -49,6 +50,7 @@ const ManageEventsPage = () => {
   
   return (
     <div className="min-h-screen pb-16 bg-gray-50">
+      <CollegeBanner />
       <PageHeader title="Manage Events" showBack={true} showNotifications={true} />
       
       <div className="p-4">

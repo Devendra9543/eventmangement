@@ -2,6 +2,7 @@
 import React from 'react';
 import { useParams } from 'react-router-dom';
 import PageHeader from '@/components/common/PageHeader';
+import CollegeBanner from '@/components/common/CollegeBanner';
 import BottomNavigation from '@/components/common/BottomNavigation';
 
 const ClubEventsPage = () => {
@@ -22,6 +23,7 @@ const ClubEventsPage = () => {
   
   return (
     <div className="min-h-screen pb-16 bg-gray-50">
+      <CollegeBanner />
       <PageHeader title={club.name} showBack={true} showNotifications={true} />
       
       <div className="p-4">
