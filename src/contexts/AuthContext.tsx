@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,9 +13,10 @@ interface Profile {
   mobile: string;
   user_type: UserType;
   club_name?: string;  // Only for organizers
-  club_role?: string;  // Only for organizers - new field
+  club_role?: string;  // Only for organizers
   class_branch?: string;  // Only for students
   created_at?: string;
+  updated_at?: string;
 }
 
 interface AuthContextType {
@@ -42,16 +42,13 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const { toast } = useToast();
 
   useEffect(() => {
-    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
         setSession(currentSession);
         
-        // Cast the user to our extended type
         const currentUser = currentSession?.user as ExtendedUser | null;
         setUser(currentUser);
         
-        // Fetch profile if user is logged in
         if (currentSession?.user) {
           await fetchUserProfile(currentSession.user.id);
         } else {
@@ -60,15 +57,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
     );
 
-    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
       setSession(currentSession);
       
-      // Cast the user to our extended type
       const currentUser = currentSession?.user as ExtendedUser | null;
       setUser(currentUser);
       
-      // Fetch profile if user is logged in
       if (currentSession?.user) {
         fetchUserProfile(currentSession.user.id);
       }
@@ -91,7 +85,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       
       if (data) {
-        // Ensure we cast the user_type to the proper UserType
         const profileData = {
           ...data,
           user_type: data.user_type as UserType
@@ -100,7 +93,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         setProfile(profileData as Profile);
         setUserType(profileData.user_type);
         
-        // Update our extended user with additional properties
         setUser(prevUser => {
           if (!prevUser) return null;
           return {
@@ -138,7 +130,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       
       if (data.user) {
-        // Fetch user profile
         const { data: profileData, error: profileError } = await supabase
           .from('profiles')
           .select('*')
@@ -154,7 +145,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           return false;
         }
         
-        // Check if user type matches
         if (profileData.user_type !== type) {
           toast({
             title: "Error",
@@ -162,7 +152,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             variant: "destructive",
           });
           
-          // Sign out since user type doesn't match
           await supabase.auth.signOut();
           return false;
         }
@@ -191,7 +180,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   const signup = async (userData: Omit<Profile, 'id' | 'created_at'>, password: string): Promise<boolean> => {
     try {
-      // Sign up with Supabase Auth
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email,
         password: password,
@@ -221,7 +209,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return false;
       }
       
-      // Update additional profile fields since the trigger will create the basic profile
       const { error: updateError } = await supabase
         .from('profiles')
         .update({
@@ -234,7 +221,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       if (updateError) {
         console.error('Error updating profile:', updateError);
-        // Don't return false here, as the user is created, just the additional fields failed to update
       }
       
       toast({
@@ -272,7 +258,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return false;
       }
       
-      // Update local state
       if (profile) {
         setProfile({ ...profile, ...userData });
       }
