@@ -4,24 +4,25 @@ import PageHeader from '@/components/common/PageHeader';
 import BottomNavigation from '@/components/common/BottomNavigation';
 import { User, Mail, Phone, Book, LogOut, Edit, ChevronRight, Users } from 'lucide-react';
 import { useAuth } from '../../contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const ProfilePage = () => {
   const { userType, logout, profile } = useAuth();
+  const navigate = useNavigate();
   
-  // Use data from profile context instead of mock data
-  const user = {
-    name: profile?.full_name || (userType === 'student' ? 'John Doe' : 'Club Admin'),
-    email: profile?.email || 'user@example.com',
-    phone: profile?.mobile || '+91 9876543210',
-    department: userType === 'student' ? (profile?.class_branch || 'Computer Science') : null,
-    clubName: userType === 'organizer' ? (profile?.club_name || 'Unknown Club') : null,
-    clubRole: profile?.club_role || null
+  // Use data directly from profile context
+  const userData = {
+    name: profile?.full_name || "Unknown User",
+    email: profile?.email || "No email provided",
+    phone: profile?.mobile || "No phone number provided",
+    department: userType === 'student' ? (profile?.class_branch || "No department") : null,
+    clubName: userType === 'organizer' ? (profile?.club_name || "No club") : null,
+    clubRole: profile?.club_role || "No role"
   };
   
-  const handleLogout = () => {
-    logout();
-    // Navigate to the home page or login page
-    window.location.href = '/';
+  const handleLogout = async () => {
+    await logout();
+    navigate('/');
   };
   
   return (
@@ -37,7 +38,7 @@ const ProfilePage = () => {
               </div>
             </div>
             <div className="ml-4">
-              <h2 className="text-white text-xl font-bold">{user.name}</h2>
+              <h2 className="text-white text-xl font-bold">{userData.name}</h2>
               <p className="text-collegeBlue-100">{userType === 'student' ? 'Student' : 'Organizer'}</p>
             </div>
             <button className="ml-auto bg-white/20 p-2 rounded-full">
@@ -50,7 +51,7 @@ const ProfilePage = () => {
               <Mail size={18} className="text-gray-500 mr-3" />
               <div>
                 <p className="text-xs text-gray-500">Email</p>
-                <p>{user.email}</p>
+                <p>{userData.email}</p>
               </div>
             </div>
             
@@ -58,36 +59,36 @@ const ProfilePage = () => {
               <Phone size={18} className="text-gray-500 mr-3" />
               <div>
                 <p className="text-xs text-gray-500">Phone Number</p>
-                <p>{user.phone}</p>
+                <p>{userData.phone}</p>
               </div>
             </div>
             
-            {userType === 'student' && user.department && (
+            {userType === 'student' && userData.department && (
               <div className="flex items-center py-3 px-4">
                 <Book size={18} className="text-gray-500 mr-3" />
                 <div>
                   <p className="text-xs text-gray-500">Department</p>
-                  <p>{user.department}</p>
+                  <p>{userData.department}</p>
                 </div>
               </div>
             )}
             
-            {userType === 'organizer' && user.clubName && (
+            {userType === 'organizer' && userData.clubName && (
               <div className="flex items-center py-3 px-4">
                 <Users size={18} className="text-gray-500 mr-3" />
                 <div>
                   <p className="text-xs text-gray-500">Club</p>
-                  <p>{user.clubName}</p>
+                  <p>{userData.clubName}</p>
                 </div>
               </div>
             )}
             
-            {userType === 'organizer' && user.clubRole && (
+            {userType === 'organizer' && userData.clubRole && (
               <div className="flex items-center py-3 px-4">
                 <Users size={18} className="text-gray-500 mr-3" />
                 <div>
                   <p className="text-xs text-gray-500">Role</p>
-                  <p>{user.clubRole}</p>
+                  <p>{userData.clubRole}</p>
                 </div>
               </div>
             )}
@@ -124,3 +125,4 @@ const ProfilePage = () => {
 };
 
 export default ProfilePage;
+
