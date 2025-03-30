@@ -20,6 +20,7 @@ const OrganizerSignupPage = () => {
     email: '',
     mobile: '',
     club_name: '',
+    club_role: '',
     password: '',
     confirmPassword: ''
   });
@@ -41,12 +42,16 @@ const OrganizerSignupPage = () => {
     setFormData(prev => ({ ...prev, club_name: value }));
   };
 
+  const handleRoleChange = (value: string) => {
+    setFormData(prev => ({ ...prev, club_role: value }));
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validate form
     if (!formData.full_name || !formData.email || !formData.mobile || 
-        !formData.club_name || !formData.password) {
+        !formData.club_name || !formData.club_role || !formData.password) {
       toast({
         title: 'Error',
         description: 'Please fill all fields',
@@ -72,6 +77,7 @@ const OrganizerSignupPage = () => {
         email: formData.email,
         mobile: formData.mobile,
         club_name: formData.club_name,
+        club_role: formData.club_role,
         user_type: 'organizer'
       }, formData.password);
       
@@ -92,6 +98,20 @@ const OrganizerSignupPage = () => {
       setIsLoading(false);
     }
   };
+
+  // List of common roles in college clubs
+  const clubRoles = [
+    "President",
+    "Secretary",
+    "Treasurer",
+    "Vice President",
+    "Event Coordinator",
+    "Technical Head",
+    "Design Head",
+    "Marketing Head",
+    "Content Lead",
+    "Member"
+  ];
 
   return (
     <div className="min-h-screen flex flex-col bg-collegeBlue-50">
@@ -173,6 +193,24 @@ const OrganizerSignupPage = () => {
                   {clubs.map((club) => (
                     <SelectItem key={club} value={club}>
                       {club}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700">
+                Role in Club
+              </label>
+              <Select onValueChange={handleRoleChange}>
+                <SelectTrigger className="w-full p-3">
+                  <SelectValue placeholder="Select your role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {clubRoles.map((role) => (
+                    <SelectItem key={role} value={role}>
+                      {role}
                     </SelectItem>
                   ))}
                 </SelectContent>

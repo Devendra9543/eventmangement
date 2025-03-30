@@ -7,4 +7,5 @@ export interface ExtendedUser extends SupabaseUser {
   userType?: UserType;
   fullName?: string;
   clubName?: string;
+  clubRole?: string;
 }

@@ -6,15 +6,16 @@ import { User, Mail, Phone, Book, LogOut, Edit, ChevronRight, Users } from 'luci
 import { useAuth } from '../../contexts/AuthContext';
 
 const ProfilePage = () => {
-  const { userType, logout } = useAuth();
+  const { userType, logout, profile } = useAuth();
   
-  // Mock data - in a real app you would fetch from a user context or API
+  // Use data from profile context instead of mock data
   const user = {
-    name: userType === 'student' ? 'John Doe' : 'CSI Club Admin',
-    email: 'user@example.com',
-    phone: '+91 9876543210',
-    department: userType === 'student' ? 'Computer Science' : null,
-    clubName: userType === 'organizer' ? 'CSI Club' : null
+    name: profile?.full_name || (userType === 'student' ? 'John Doe' : 'Club Admin'),
+    email: profile?.email || 'user@example.com',
+    phone: profile?.mobile || '+91 9876543210',
+    department: userType === 'student' ? (profile?.class_branch || 'Computer Science') : null,
+    clubName: userType === 'organizer' ? (profile?.club_name || 'Unknown Club') : null,
+    clubRole: profile?.club_role || null
   };
   
   const handleLogout = () => {
@@ -77,6 +78,16 @@ const ProfilePage = () => {
                 <div>
                   <p className="text-xs text-gray-500">Club</p>
                   <p>{user.clubName}</p>
+                </div>
+              </div>
+            )}
+            
+            {userType === 'organizer' && user.clubRole && (
+              <div className="flex items-center py-3 px-4">
+                <Users size={18} className="text-gray-500 mr-3" />
+                <div>
+                  <p className="text-xs text-gray-500">Role</p>
+                  <p>{user.clubRole}</p>
                 </div>
               </div>
             )}

@@ -14,6 +14,7 @@ interface Profile {
   mobile: string;
   user_type: UserType;
   club_name?: string;  // Only for organizers
+  club_role?: string;  // Only for organizers - new field
   class_branch?: string;  // Only for students
   created_at?: string;
 }
@@ -106,7 +107,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             ...prevUser,
             userType: profileData.user_type,
             fullName: profileData.full_name,
-            clubName: profileData.club_name
+            clubName: profileData.club_name,
+            clubRole: profileData.club_role
           };
         });
       }
@@ -225,6 +227,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         .update({
           mobile: userData.mobile,
           club_name: userData.club_name,
+          club_role: userData.club_role,
           class_branch: userData.class_branch,
         })
         .eq('id', authData.user.id);
