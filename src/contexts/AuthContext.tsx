@@ -25,7 +25,7 @@ interface AuthContextType {
   userType: UserType;
   isAuthenticated: boolean;
   login: (email: string, password: string, userType: UserType) => Promise<boolean>;
-  signup: (userData: Omit<Profile, 'id' | 'created_at'>, password: string) => Promise<boolean>;
+  signup: (userData: Omit<Profile, 'id' | 'created_at' | 'updated_at'>, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   setUserTypeBeforeAuth: (type: UserType) => void;
   updateUser: (userData: Partial<Profile>) => Promise<boolean>;
@@ -85,12 +85,20 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       
       if (data) {
-        const profileData = {
-          ...data,
-          user_type: data.user_type as UserType
+        const profileData: Profile = {
+          id: data.id,
+          full_name: data.full_name || '',
+          email: data.email || '',
+          mobile: data.mobile || '',
+          user_type: data.user_type as UserType,
+          club_name: data.club_name,
+          club_role: data.club_role,
+          class_branch: data.class_branch,
+          created_at: data.created_at,
+          updated_at: data.updated_at
         };
         
-        setProfile(profileData as Profile);
+        setProfile(profileData);
         setUserType(profileData.user_type);
         
         setUser(prevUser => {
@@ -178,7 +186,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     }
   };
 
-  const signup = async (userData: Omit<Profile, 'id' | 'created_at'>, password: string): Promise<boolean> => {
+  const signup = async (userData: Omit<Profile, 'id' | 'created_at' | 'updated_at'>, password: string): Promise<boolean> => {
     try {
       const { data: authData, error: authError } = await supabase.auth.signUp({
         email: userData.email,
