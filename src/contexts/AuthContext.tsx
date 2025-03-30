@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -17,6 +18,20 @@ interface Profile {
   class_branch?: string;  // Only for students
   created_at?: string;
   updated_at?: string;
+}
+
+// Define the type for the raw data coming from Supabase
+interface ProfileData {
+  id: string;
+  full_name: string | null;
+  email: string | null;
+  mobile: string | null;
+  user_type: string | null;
+  club_name: string | null;
+  club_role: string | null;
+  class_branch: string | null;
+  created_at: string | null;
+  updated_at: string | null;
 }
 
 interface AuthContextType {
@@ -85,30 +100,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       
       if (data) {
-        const profileData: Profile = {
-          id: data.id,
-          full_name: data.full_name || '',
-          email: data.email || '',
-          mobile: data.mobile || '',
-          user_type: data.user_type as UserType,
-          club_name: data.club_name,
-          club_role: data.club_role,
-          class_branch: data.class_branch,
-          created_at: data.created_at,
-          updated_at: data.updated_at
+        // Now we explicitly type the data from Supabase
+        const profileData = data as ProfileData;
+        
+        const formattedProfile: Profile = {
+          id: profileData.id,
+          full_name: profileData.full_name || '',
+          email: profileData.email || '',
+          mobile: profileData.mobile || '',
+          user_type: profileData.user_type as UserType,
+          club_name: profileData.club_name || undefined,
+          club_role: profileData.club_role || undefined,
+          class_branch: profileData.class_branch || undefined,
+          created_at: profileData.created_at || undefined,
+          updated_at: profileData.updated_at || undefined
         };
         
-        setProfile(profileData);
-        setUserType(profileData.user_type);
+        setProfile(formattedProfile);
+        setUserType(formattedProfile.user_type);
         
         setUser(prevUser => {
           if (!prevUser) return null;
           return {
             ...prevUser,
-            userType: profileData.user_type,
-            fullName: profileData.full_name,
-            clubName: profileData.club_name,
-            clubRole: profileData.club_role
+            userType: formattedProfile.user_type,
+            fullName: formattedProfile.full_name,
+            clubName: formattedProfile.club_name,
+            clubRole: formattedProfile.club_role
           };
         });
       }
