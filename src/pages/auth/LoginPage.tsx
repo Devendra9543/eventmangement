@@ -6,15 +6,24 @@ import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const LoginPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { login, userType, isAuthenticated } = useAuth();
+  const { login, userType, isAuthenticated, resendConfirmationEmail } = useAuth();
   const { toast } = useToast();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showConfirmationDialog, setShowConfirmationDialog] = useState(false);
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -39,10 +48,10 @@ const LoginPage = () => {
     setIsLoading(true);
     
     try {
-      const success = await login(email, password, userType as any);
+      const result = await login(email, password, userType as any);
       
-      if (success) {
-        // Redirect will happen automatically via the useEffect above
+      if (!result.success && result.emailConfirmationNeeded) {
+        setShowConfirmationDialog(true);
       }
     } catch (error) {
       console.error(error);
@@ -53,6 +62,13 @@ const LoginPage = () => {
       });
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleResendConfirmation = async () => {
+    const success = await resendConfirmationEmail(email);
+    if (success) {
+      setShowConfirmationDialog(false);
     }
   };
 
@@ -127,6 +143,34 @@ const LoginPage = () => {
           </form>
         </div>
       </div>
+
+      {/* Email Confirmation Dialog */}
+      <Dialog open={showConfirmationDialog} onOpenChange={setShowConfirmationDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Email Confirmation Required</DialogTitle>
+            <DialogDescription>
+              Your email hasn't been confirmed yet. Please check your inbox for the confirmation link.
+              If you didn't receive it, you can request a new confirmation email.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex flex-col sm:flex-row sm:justify-between">
+            <Button 
+              variant="outline" 
+              onClick={() => setShowConfirmationDialog(false)}
+              className="mb-2 sm:mb-0"
+            >
+              Close
+            </Button>
+            <Button 
+              onClick={handleResendConfirmation}
+              className="bg-collegeBlue-500 hover:bg-collegeBlue-600"
+            >
+              Resend Confirmation Email
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

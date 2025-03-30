@@ -8,6 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useEvents } from '../../contexts/EventContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 const OrganizerSignupPage = () => {
   const navigate = useNavigate();
@@ -25,6 +32,8 @@ const OrganizerSignupPage = () => {
     confirmPassword: ''
   });
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [signupEmail, setSignupEmail] = useState('');
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -70,6 +79,7 @@ const OrganizerSignupPage = () => {
     }
     
     setIsLoading(true);
+    setSignupEmail(formData.email);
     
     try {
       const success = await signup({
@@ -82,11 +92,7 @@ const OrganizerSignupPage = () => {
       }, formData.password);
       
       if (success) {
-        toast({
-          title: 'Success',
-          description: 'Account created successfully',
-        });
-        navigate('/dashboard/organizer');
+        setShowSuccessDialog(true);
       }
     } catch (error) {
       toast({
@@ -270,6 +276,30 @@ const OrganizerSignupPage = () => {
           </form>
         </div>
       </div>
+
+      {/* Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Account Created Successfully!</DialogTitle>
+            <DialogDescription>
+              A confirmation email has been sent to <strong>{signupEmail}</strong>. 
+              Please check your inbox and click the confirmation link to activate your account.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end mt-4">
+            <Button 
+              onClick={() => {
+                setShowSuccessDialog(false);
+                navigate('/login');
+              }}
+              className="bg-collegePurple-500 hover:bg-collegePurple-600"
+            >
+              Go to Login
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

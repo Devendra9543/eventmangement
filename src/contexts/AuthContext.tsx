@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -39,12 +38,13 @@ interface AuthContextType {
   profile: Profile | null;
   userType: UserType;
   isAuthenticated: boolean;
-  login: (email: string, password: string, userType: UserType) => Promise<boolean>;
+  login: (email: string, password: string, userType: UserType) => Promise<{ success: boolean, emailConfirmationNeeded?: boolean }>;
   signup: (userData: Omit<Profile, 'id' | 'created_at' | 'updated_at'>, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   setUserTypeBeforeAuth: (type: UserType) => void;
   updateUser: (userData: Partial<Profile>) => Promise<boolean>;
   session: Session | null;
+  resendConfirmationEmail: (email: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -139,7 +139,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setUserType(type);
   };
 
-  const login = async (email: string, password: string, type: UserType): Promise<boolean> => {
+  const login = async (email: string, password: string, type: UserType): Promise<{ success: boolean, emailConfirmationNeeded?: boolean }> => {
     try {
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
@@ -147,12 +147,21 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       });
       
       if (error) {
+        if (error.message.includes('Email not confirmed')) {
+          toast({
+            title: "Email Not Confirmed",
+            description: "Please check your inbox and confirm your email before logging in",
+            variant: "destructive",
+          });
+          return { success: false, emailConfirmationNeeded: true };
+        }
+        
         toast({
           title: "Error",
           description: error.message || "Invalid credentials",
           variant: "destructive",
         });
-        return false;
+        return { success: false };
       }
       
       if (data.user) {
@@ -168,7 +177,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
             description: "Unable to fetch user profile",
             variant: "destructive",
           });
-          return false;
+          return { success: false };
         }
         
         if (profileData.user_type !== type) {
@@ -179,7 +188,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           });
           
           await supabase.auth.signOut();
-          return false;
+          return { success: false };
         }
         
         setProfile(profileData as Profile);
@@ -189,15 +198,48 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
           description: "Logged in successfully",
         });
         
-        return true;
+        return { success: true };
       }
       
-      return false;
+      return { success: false };
     } catch (error: any) {
       console.error('Login error:', error);
       toast({
         title: "Error",
         description: error.message || "Login failed. Please try again.",
+        variant: "destructive",
+      });
+      return { success: false };
+    }
+  };
+
+  const resendConfirmationEmail = async (email: string): Promise<boolean> => {
+    try {
+      const { error } = await supabase.auth.resend({
+        type: 'signup',
+        email: email,
+      });
+      
+      if (error) {
+        toast({
+          title: "Error",
+          description: error.message || "Failed to resend confirmation email",
+          variant: "destructive",
+        });
+        return false;
+      }
+      
+      toast({
+        title: "Success",
+        description: "Confirmation email sent. Please check your inbox.",
+      });
+      
+      return true;
+    } catch (error: any) {
+      console.error('Resend confirmation error:', error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to resend confirmation email",
         variant: "destructive",
       });
       return false;
@@ -329,7 +371,8 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         logout,
         setUserTypeBeforeAuth,
         updateUser,
-        session
+        session,
+        resendConfirmationEmail
       }}
     >
       {children}

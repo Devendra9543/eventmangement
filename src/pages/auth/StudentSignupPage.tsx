@@ -10,6 +10,13 @@ import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from '
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 // Define the form validation schema
 const signupSchema = z.object({
@@ -31,6 +38,8 @@ const StudentSignupPage = () => {
   const { signup, isAuthenticated } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [showSuccessDialog, setShowSuccessDialog] = useState(false);
+  const [signupEmail, setSignupEmail] = useState('');
 
   // Initialize react-hook-form
   const form = useForm<SignupFormValues>({
@@ -56,6 +65,8 @@ const StudentSignupPage = () => {
     setIsLoading(true);
     
     try {
+      setSignupEmail(values.email);
+      
       const success = await signup({
         full_name: values.full_name,
         email: values.email,
@@ -65,11 +76,7 @@ const StudentSignupPage = () => {
       }, values.password);
       
       if (success) {
-        toast({
-          title: 'Success',
-          description: 'Account created successfully',
-        });
-        navigate('/dashboard/student');
+        setShowSuccessDialog(true);
       }
     } catch (error) {
       toast({
@@ -250,6 +257,30 @@ const StudentSignupPage = () => {
           </Form>
         </div>
       </div>
+
+      {/* Success Dialog */}
+      <Dialog open={showSuccessDialog} onOpenChange={setShowSuccessDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Account Created Successfully!</DialogTitle>
+            <DialogDescription>
+              A confirmation email has been sent to <strong>{signupEmail}</strong>. 
+              Please check your inbox and click the confirmation link to activate your account.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex justify-end mt-4">
+            <Button 
+              onClick={() => {
+                setShowSuccessDialog(false);
+                navigate('/login');
+              }}
+              className="bg-collegeBlue-500 hover:bg-collegeBlue-600"
+            >
+              Go to Login
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
