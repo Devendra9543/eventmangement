@@ -4,7 +4,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 
 // Contexts
 import { AuthProvider } from "./contexts/AuthContext";
@@ -12,7 +12,6 @@ import { NotificationProvider } from "./contexts/NotificationContext";
 import { EventProvider } from "./contexts/EventContext";
 
 // Pages
-import Index from "./pages/Index";
 import LoginPage from "./pages/auth/LoginPage";
 import StudentSignupPage from "./pages/auth/StudentSignupPage";
 import OrganizerSignupPage from "./pages/auth/OrganizerSignupPage";
@@ -44,8 +43,10 @@ const App = () => (
               <Sonner />
               <BrowserRouter>
                 <Routes>
+                  {/* Redirect root to user type selection */}
+                  <Route path="/" element={<Navigate to="/user-type-selection" replace />} />
+                  
                   {/* Auth Routes */}
-                  <Route path="/" element={<Index />} />
                   <Route path="/user-type-selection" element={<UserTypeSelection />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/signup/student" element={<StudentSignupPage />} />
