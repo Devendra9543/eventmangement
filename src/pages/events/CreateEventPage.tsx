@@ -34,8 +34,8 @@ const CreateEventPage = () => {
     category: '',
     price: '',
     maxAttendees: '',
-    dueDate: '', // Added due date field
-    imageUrl: '/assets/events/default.jpg', // Default image
+    dueDate: '', 
+    imageUrl: '/assets/events/default.jpg', 
   });
   
   const [isLoading, setIsLoading] = useState(false);
@@ -112,7 +112,7 @@ const CreateEventPage = () => {
         maxAttendees: Number(formData.maxAttendees),
         currentAttendees: 0,
         imageUrl: formData.imageUrl,
-        dueDate: formData.dueDate, // Added due date
+        dueDate: formData.dueDate, 
       });
       
       if (success) {
