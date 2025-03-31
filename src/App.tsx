@@ -12,6 +12,7 @@ import { NotificationProvider } from "./contexts/NotificationContext";
 import { EventProvider } from "./contexts/EventContext";
 
 // Pages
+import Index from "./pages/Index";
 import LoginPage from "./pages/auth/LoginPage";
 import StudentSignupPage from "./pages/auth/StudentSignupPage";
 import OrganizerSignupPage from "./pages/auth/OrganizerSignupPage";
@@ -44,7 +45,7 @@ const App = () => (
               <BrowserRouter>
                 <Routes>
                   {/* Auth Routes */}
-                  <Route path="/" element={<UserTypeSelection />} />
+                  <Route path="/" element={<Index />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/signup/student" element={<StudentSignupPage />} />
                   <Route path="/signup/organizer" element={<OrganizerSignupPage />} />
