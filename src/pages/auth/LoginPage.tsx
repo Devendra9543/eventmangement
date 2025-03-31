@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
@@ -34,7 +33,7 @@ const LoginPage = () => {
   }, [isAuthenticated, userType, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+    e.preventDefault(); // This prevents the default form submission behavior
     
     if (!email || !password) {
       toast({

@@ -1,5 +1,5 @@
 
-import { Home, Calendar, User, BarChart3 } from 'lucide-react';
+import { Home, Calendar, User } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -13,14 +13,12 @@ const BottomNavigation = () => {
   // Different navigation items for student and organizer
   const studentNavItems = [
     { name: 'Home', path: '/dashboard/student', icon: Home },
-    { name: 'Events', path: '/events', icon: Calendar },
     { name: 'Profile', path: '/profile', icon: User }
   ];
 
   const organizerNavItems = [
     { name: 'Home', path: '/dashboard/organizer', icon: Home },
     { name: 'Events', path: '/manage-events', icon: Calendar },
-    { name: 'Analytics', path: '/analytics', icon: BarChart3 },
     { name: 'Profile', path: '/profile', icon: User }
   ];
 
