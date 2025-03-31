@@ -46,6 +46,7 @@ const App = () => (
                 <Routes>
                   {/* Auth Routes */}
                   <Route path="/" element={<Index />} />
+                  <Route path="/user-type-selection" element={<UserTypeSelection />} />
                   <Route path="/login" element={<LoginPage />} />
                   <Route path="/signup/student" element={<StudentSignupPage />} />
                   <Route path="/signup/organizer" element={<OrganizerSignupPage />} />

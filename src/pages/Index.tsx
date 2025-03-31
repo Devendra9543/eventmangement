@@ -18,7 +18,7 @@ const Index = () => {
           
           <div className="space-y-4">
             <Button 
-              onClick={() => navigate('/login')}
+              onClick={() => navigate('/user-type-selection')}
               className="w-full bg-collegeBlue-500 hover:bg-collegeBlue-600 text-white py-3 rounded-lg"
             >
               Get Started
