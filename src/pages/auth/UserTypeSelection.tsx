@@ -19,7 +19,7 @@ const UserTypeSelection = () => {
     <div className="min-h-screen flex flex-col bg-collegeBlue-50">
       <CollegeBanner />
       
-      <div className="flex-1 flex flex-col justify-center items-center p-6 pt-16">
+      <div className="flex-1 flex flex-col justify-center items-center p-6 pt-20">
         <div className="w-full max-w-md">
           <h1 className="text-3xl font-bold text-center text-collegeBlue-900 mb-2">Welcome</h1>
           <p className="text-center text-gray-600 mb-8">Log in or sign up as</p>

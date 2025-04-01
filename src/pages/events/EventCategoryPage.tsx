@@ -44,7 +44,7 @@ const EventCategoryPage = () => {
     <div className="min-h-screen pb-16 bg-gray-50">
       <PageHeader title={category.name} showBack={true} showNotifications={true} />
       
-      <div className="p-4">
+      <div className="p-4 pt-16">
         <h2 className="text-xl font-semibold mb-4 text-collegeBlue-900">Upcoming Events</h2>
         
         <div className="space-y-4">
