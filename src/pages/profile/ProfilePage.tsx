@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/common/PageHeader';
 import BottomNavigation from '@/components/common/BottomNavigation';
 import { User, Mail, Phone, Book, LogOut, Edit, ChevronRight, Users, Bell } from 'lucide-react';
@@ -26,9 +25,10 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 
 const ProfilePage = () => {
-  const { userType, logout, profile } = useAuth();
+  const { userType, logout, profile, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [notificationSettingsOpen, setNotificationSettingsOpen] = useState(false);
@@ -37,8 +37,28 @@ const ProfilePage = () => {
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Use data directly from profile context
+  useEffect(() => {
+    if (!isAuthenticated) {
+      navigate('/login');
+    } else if (profile) {
+      setIsLoading(false);
+    } else {
+      const timer = setTimeout(() => {
+        if (!profile) {
+          toast({
+            title: "Error loading profile",
+            description: "Please try refreshing the page",
+            variant: "destructive",
+          });
+          setIsLoading(false);
+        }
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [profile, isAuthenticated, navigate, toast]);
+  
   const userData = {
     name: profile?.full_name || "Unknown User",
     email: profile?.email || "No email provided",
@@ -55,7 +75,6 @@ const ProfilePage = () => {
   };
 
   const handleChangePassword = () => {
-    // Validation
     if (!currentPassword || !newPassword || !confirmPassword) {
       toast({
         title: "Missing information",
@@ -74,14 +93,11 @@ const ProfilePage = () => {
       return;
     }
 
-    // Here you would implement the actual password change logic using Supabase
-    // For now, we'll simulate success
     toast({
       title: "Password updated",
       description: "Your password has been changed successfully",
     });
     
-    // Reset fields and close dialog
     setCurrentPassword('');
     setNewPassword('');
     setConfirmPassword('');
@@ -94,6 +110,14 @@ const ProfilePage = () => {
       description: `You will ${enabled ? 'now' : 'no longer'} receive ${type.toLowerCase()} notifications`,
     });
   };
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex justify-center items-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen pb-16 bg-gray-50">
@@ -165,7 +189,6 @@ const ProfilePage = () => {
           </div>
         </div>
         
-        {/* Settings links */}
         <div className="bg-white rounded-lg shadow overflow-hidden mb-4">
           <div className="divide-y divide-gray-100">
             <button 
@@ -195,7 +218,6 @@ const ProfilePage = () => {
         </button>
       </div>
       
-      {/* Change Password Dialog */}
       <Dialog open={changePasswordOpen} onOpenChange={setChangePasswordOpen}>
         <DialogContent>
           <DialogHeader>
@@ -240,7 +262,6 @@ const ProfilePage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Notification Settings Dialog */}
       <Dialog open={notificationSettingsOpen} onOpenChange={setNotificationSettingsOpen}>
         <DialogContent>
           <DialogHeader>
@@ -287,7 +308,6 @@ const ProfilePage = () => {
         </DialogContent>
       </Dialog>
       
-      {/* Logout Confirmation Dialog */}
       <AlertDialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>

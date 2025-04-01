@@ -1,3 +1,4 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -57,37 +58,59 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const { toast } = useToast();
 
   useEffect(() => {
+    // Set up auth state listener FIRST to avoid missing auth events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, currentSession) => {
+      (event, currentSession) => {
+        console.log("Auth state change event:", event);
+        
+        // Don't reset the state if the event is just a token refresh
+        if (event === 'TOKEN_REFRESHED') {
+          setSession(currentSession);
+          return;
+        }
+        
+        // Update session state
         setSession(currentSession);
         
+        // Only update user state if it's different to avoid unnecessary re-renders
         const currentUser = currentSession?.user as ExtendedUser | null;
-        setUser(currentUser);
+        if (JSON.stringify(currentUser) !== JSON.stringify(user)) {
+          setUser(currentUser);
+        }
         
+        // If we have a user, fetch their profile (with setTimeout to prevent Supabase deadlock)
         if (currentSession?.user) {
-          await fetchUserProfile(currentSession.user.id);
-        } else {
+          setTimeout(() => {
+            fetchUserProfile(currentSession.user.id);
+          }, 0);
+        } else if (event === 'SIGNED_OUT') {
+          // Clear profile state on sign out
           setProfile(null);
+          setUserType(null);
         }
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session: currentSession } }) => {
-      setSession(currentSession);
+    // THEN check for existing session
+    const initializeAuth = async () => {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
       
-      const currentUser = currentSession?.user as ExtendedUser | null;
-      setUser(currentUser);
-      
-      if (currentSession?.user) {
-        fetchUserProfile(currentSession.user.id);
+      if (currentSession) {
+        setSession(currentSession);
+        setUser(currentSession.user as ExtendedUser | null);
+        
+        await fetchUserProfile(currentSession.user.id);
       }
-    });
+    };
+
+    initializeAuth();
 
     return () => subscription.unsubscribe();
   }, []);
 
   const fetchUserProfile = async (userId: string) => {
     try {
+      console.log("Fetching user profile for:", userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
@@ -100,6 +123,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       }
       
       if (data) {
+        console.log("Profile data received:", data);
         // Now we explicitly type the data from Supabase
         const profileData = data as ProfileData;
         
