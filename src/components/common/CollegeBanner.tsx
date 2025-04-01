@@ -1,6 +1,5 @@
 
 import React from 'react';
-import CollegeLogo from './CollegeLogo';
 
 const CollegeBanner = () => {
   return (
@@ -11,7 +10,6 @@ const CollegeBanner = () => {
         className="w-full h-full object-cover"
       />
       <div className="absolute inset-0 bg-gradient-to-b from-transparent to-collegeBlue-500/80"></div>
-      <CollegeLogo />
     </div>
   );
 };
