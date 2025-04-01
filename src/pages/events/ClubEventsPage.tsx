@@ -8,11 +8,25 @@ import BottomNavigation from '@/components/common/BottomNavigation';
 const ClubEventsPage = () => {
   const { clubId } = useParams();
   
+  // Get the actual club name based on the clubId
+  const getClubName = (id: string | undefined) => {
+    const clubs: Record<string, string> = {
+      'CSI': 'CSI Club',
+      'ISTE': 'ISTE Club',
+      'DEBUGGERS': 'Debuggers Club',
+      // Add more clubs as needed
+    };
+    
+    return clubs[id as string] || id || 'Club';
+  };
+  
+  const clubName = getClubName(clubId);
+  
   // Mock data - in a real app you would fetch this from an API
   const club = {
     id: clubId,
-    name: "CSI Club",
-    description: "Computer Society of India college chapter"
+    name: clubName,
+    description: "College club chapter"
   };
   
   const categories = [
