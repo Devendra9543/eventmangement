@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import PageHeader from '@/components/common/PageHeader';
 import BottomNavigation from '@/components/common/BottomNavigation';
@@ -26,13 +27,18 @@ import {
 import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import { zodResolver } from '@hookform/resolvers/zod';
 
 const ProfilePage = () => {
-  const { userType, logout, profile, isAuthenticated } = useAuth();
+  const { userType, logout, profile, isAuthenticated, updateUser } = useAuth();
   const navigate = useNavigate();
   const [changePasswordOpen, setChangePasswordOpen] = useState(false);
   const [notificationSettingsOpen, setNotificationSettingsOpen] = useState(false);
   const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
+  const [editProfileOpen, setEditProfileOpen] = useState(false);
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -58,6 +64,45 @@ const ProfilePage = () => {
       return () => clearTimeout(timer);
     }
   }, [profile, isAuthenticated, navigate, toast]);
+
+  // Define the form schema based on user type
+  const formSchema = userType === 'student'
+    ? z.object({
+        full_name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+        mobile: z.string().min(10, { message: "Please enter a valid phone number." }),
+        class_branch: z.string().min(2, { message: "Please enter a valid class/branch." })
+      })
+    : z.object({
+        full_name: z.string().min(2, { message: "Name must be at least 2 characters." }),
+        mobile: z.string().min(10, { message: "Please enter a valid phone number." }),
+        club_name: z.string().min(2, { message: "Please enter a valid club name." }),
+        club_role: z.string().min(2, { message: "Please enter a valid role." })
+      });
+
+  // Initialize the form
+  const form = useForm({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      full_name: profile?.full_name || "",
+      mobile: profile?.mobile || "",
+      class_branch: profile?.class_branch || "",
+      club_name: profile?.club_name || "",
+      club_role: profile?.club_role || ""
+    }
+  });
+
+  // Update form values when profile data loads
+  useEffect(() => {
+    if (profile) {
+      form.reset({
+        full_name: profile.full_name || "",
+        mobile: profile.mobile || "",
+        class_branch: profile.class_branch || "",
+        club_name: profile.club_name || "",
+        club_role: profile.club_role || ""
+      });
+    }
+  }, [profile, form]);
   
   const userData = {
     name: profile?.full_name || "Unknown User",
@@ -67,7 +112,41 @@ const ProfilePage = () => {
     clubName: userType === 'organizer' ? (profile?.club_name || "No club") : null,
     clubRole: profile?.club_role || "No role"
   };
-  
+
+  const handleEditProfile = async (data: any) => {
+    try {
+      const updatedFields = userType === 'student' 
+        ? {
+            full_name: data.full_name,
+            mobile: data.mobile,
+            class_branch: data.class_branch
+          }
+        : {
+            full_name: data.full_name,
+            mobile: data.mobile,
+            club_name: data.club_name,
+            club_role: data.club_role
+          };
+
+      const success = await updateUser(updatedFields);
+      
+      if (success) {
+        toast({
+          title: "Profile Updated",
+          description: "Your profile information has been updated successfully",
+        });
+        setEditProfileOpen(false);
+      }
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        title: "Update Failed",
+        description: "Failed to update profile. Please try again.",
+        variant: "destructive"
+      });
+    }
+  };
+
   const handleLogoutConfirm = async () => {
     await logout();
     navigate('/');
@@ -135,7 +214,10 @@ const ProfilePage = () => {
               <h2 className="text-white text-xl font-bold">{userData.name}</h2>
               <p className="text-collegeBlue-100">{userType === 'student' ? 'Student' : 'Organizer'}</p>
             </div>
-            <button className="ml-auto bg-white/20 p-2 rounded-full">
+            <button 
+              className="ml-auto bg-white/20 p-2 rounded-full"
+              onClick={() => setEditProfileOpen(true)}
+            >
               <Edit size={16} className="text-white" />
             </button>
           </div>
@@ -167,7 +249,7 @@ const ProfilePage = () => {
               </div>
             )}
             
-            {userType === 'organizer' && userData.clubName && (
+            {userType === 'organizer' && (
               <div className="flex items-center py-3 px-4">
                 <Users size={18} className="text-gray-500 mr-3" />
                 <div>
@@ -177,7 +259,7 @@ const ProfilePage = () => {
               </div>
             )}
             
-            {userType === 'organizer' && userData.clubRole && (
+            {userType === 'organizer' && (
               <div className="flex items-center py-3 px-4">
                 <Users size={18} className="text-gray-500 mr-3" />
                 <div>
@@ -259,6 +341,106 @@ const ProfilePage = () => {
             <Button variant="outline" onClick={() => setChangePasswordOpen(false)}>Cancel</Button>
             <Button onClick={handleChangePassword}>Update Password</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={editProfileOpen} onOpenChange={setEditProfileOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+            <DialogDescription>
+              Update your profile information
+            </DialogDescription>
+          </DialogHeader>
+          
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(handleEditProfile)} className="space-y-4 py-2">
+              <FormField
+                control={form.control}
+                name="full_name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Full Name</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Enter your full name" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              <FormField
+                control={form.control}
+                name="mobile"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Phone Number</FormLabel>
+                    <FormControl>
+                      <Input {...field} placeholder="Enter your phone number" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              
+              {userType === 'student' && (
+                <FormField
+                  control={form.control}
+                  name="class_branch"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Department/Branch</FormLabel>
+                      <FormControl>
+                        <Input {...field} placeholder="Enter your department or branch" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
+              
+              {userType === 'organizer' && (
+                <>
+                  <FormField
+                    control={form.control}
+                    name="club_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Club Name</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter your club name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={form.control}
+                    name="club_role"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Role</FormLabel>
+                        <FormControl>
+                          <Input {...field} placeholder="Enter your role in the club" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </>
+              )}
+              
+              <DialogFooter>
+                <Button variant="outline" type="button" onClick={() => setEditProfileOpen(false)}>
+                  Cancel
+                </Button>
+                <Button type="submit">
+                  Save Changes
+                </Button>
+              </DialogFooter>
+            </form>
+          </Form>
         </DialogContent>
       </Dialog>
 
