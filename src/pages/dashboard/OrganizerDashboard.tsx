@@ -6,11 +6,15 @@ import BottomNavigation from '@/components/common/BottomNavigation';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { Button } from '@/components/ui/button';
+import { AlertCircle } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const OrganizerDashboard = () => {
   const { profile, isAuthenticated, userType } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
     // Check if user is authenticated and is an organizer
@@ -26,6 +30,7 @@ const OrganizerDashboard = () => {
 
     // Set loading to false once profile is loaded
     if (profile) {
+      console.log("Profile data in dashboard:", profile);
       setIsLoading(false);
     } else {
       // Set a timeout to stop showing loading state after some time
@@ -35,6 +40,16 @@ const OrganizerDashboard = () => {
       return () => clearTimeout(timer);
     }
   }, [isAuthenticated, navigate, profile, userType]);
+
+  const isProfileIncomplete = !profile?.club_name || !profile?.club_role || !profile?.mobile;
+
+  const handleUpdateProfile = () => {
+    navigate('/profile');
+    toast({
+      title: "Profile Update",
+      description: "Please update your profile details",
+    });
+  };
 
   if (isLoading) {
     return (
@@ -55,11 +70,52 @@ const OrganizerDashboard = () => {
             Welcome, {profile?.full_name || 'Organizer'}!
           </h2>
           
+          {isProfileIncomplete && (
+            <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md flex items-start">
+              <AlertCircle className="text-yellow-500 mr-2 flex-shrink-0" size={18} />
+              <div className="flex-1">
+                <p className="text-sm text-yellow-700">Your profile is incomplete. Please update your details to get the most out of the platform.</p>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="mt-2 text-yellow-700 border-yellow-300 hover:bg-yellow-100"
+                  onClick={handleUpdateProfile}
+                >
+                  Update Profile
+                </Button>
+              </div>
+            </div>
+          )}
+          
           <div className="space-y-2 mb-4">
-            <p className="text-gray-600"><span className="font-medium">Club:</span> {profile?.club_name || 'N/A'}</p>
-            <p className="text-gray-600"><span className="font-medium">Role:</span> {profile?.club_role || 'N/A'}</p>
-            <p className="text-gray-600"><span className="font-medium">Email:</span> {profile?.email || 'N/A'}</p>
-            <p className="text-gray-600"><span className="font-medium">Phone:</span> {profile?.mobile || 'N/A'}</p>
+            <p className="text-gray-600">
+              <span className="font-medium">Club:</span> 
+              {profile?.club_name ? (
+                <span className="ml-1">{profile.club_name}</span>
+              ) : (
+                <span className="ml-1 text-gray-400 italic">Not set (update your profile)</span>
+              )}
+            </p>
+            <p className="text-gray-600">
+              <span className="font-medium">Role:</span> 
+              {profile?.club_role ? (
+                <span className="ml-1">{profile.club_role}</span>
+              ) : (
+                <span className="ml-1 text-gray-400 italic">Not set (update your profile)</span>
+              )}
+            </p>
+            <p className="text-gray-600">
+              <span className="font-medium">Email:</span> 
+              <span className="ml-1">{profile?.email || 'N/A'}</span>
+            </p>
+            <p className="text-gray-600">
+              <span className="font-medium">Phone:</span> 
+              {profile?.mobile ? (
+                <span className="ml-1">{profile.mobile}</span>
+              ) : (
+                <span className="ml-1 text-gray-400 italic">Not set (update your profile)</span>
+              )}
+            </p>
           </div>
         </div>
         
