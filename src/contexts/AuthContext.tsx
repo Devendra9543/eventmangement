@@ -343,19 +343,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         return false;
       }
       
-      if (profile) {
-        setProfile({ ...profile, ...userData });
-        
-        setUser(prevUser => {
-          if (!prevUser) return null;
-          return {
-            ...prevUser,
-            fullName: userData.full_name || prevUser.fullName,
-            clubName: userData.club_name || prevUser.clubName,
-            clubRole: userData.club_role || prevUser.clubRole
-          };
-        });
-      }
+      await fetchUserProfile(user.id);
       
       toast({
         title: "Success",
