@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
@@ -58,40 +57,33 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const { toast } = useToast();
 
   useEffect(() => {
-    // Set up auth state listener FIRST to avoid missing auth events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, currentSession) => {
         console.log("Auth state change event:", event);
         
-        // Don't reset the state if the event is just a token refresh
         if (event === 'TOKEN_REFRESHED') {
           setSession(currentSession);
           return;
         }
         
-        // Update session state
         setSession(currentSession);
         
-        // Only update user state if it's different to avoid unnecessary re-renders
         const currentUser = currentSession?.user as ExtendedUser | null;
         if (JSON.stringify(currentUser) !== JSON.stringify(user)) {
           setUser(currentUser);
         }
         
-        // If we have a user, fetch their profile (with setTimeout to prevent Supabase deadlock)
         if (currentSession?.user) {
           setTimeout(() => {
             fetchUserProfile(currentSession.user.id);
           }, 0);
         } else if (event === 'SIGNED_OUT') {
-          // Clear profile state on sign out
           setProfile(null);
           setUserType(null);
         }
       }
     );
 
-    // THEN check for existing session
     const initializeAuth = async () => {
       const { data: { session: currentSession } } = await supabase.auth.getSession();
       
@@ -124,7 +116,6 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       if (data) {
         console.log("Profile data received:", data);
-        // Now we explicitly type the data from Supabase
         const profileData = data as ProfileData;
         
         const formattedProfile: Profile = {
@@ -336,12 +327,14 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     if (!user) return false;
     
     try {
+      console.log("Updating user profile with data:", userData);
       const { error } = await supabase
         .from('profiles')
         .update(userData)
         .eq('id', user.id);
       
       if (error) {
+        console.error('Update profile error:', error);
         toast({
           title: "Error",
           description: error.message || "Failed to update profile",
@@ -352,6 +345,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       
       if (profile) {
         setProfile({ ...profile, ...userData });
+        
+        setUser(prevUser => {
+          if (!prevUser) return null;
+          return {
+            ...prevUser,
+            fullName: userData.full_name || prevUser.fullName,
+            clubName: userData.club_name || prevUser.clubName,
+            clubRole: userData.club_role || prevUser.clubRole
+          };
+        });
       }
       
       toast({

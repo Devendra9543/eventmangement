@@ -67,6 +67,7 @@ export type Database = {
         Row: {
           class_branch: string | null
           club_name: string | null
+          club_role: string | null
           created_at: string | null
           email: string | null
           full_name: string | null
@@ -78,6 +79,7 @@ export type Database = {
         Insert: {
           class_branch?: string | null
           club_name?: string | null
+          club_role?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
@@ -89,6 +91,7 @@ export type Database = {
         Update: {
           class_branch?: string | null
           club_name?: string | null
+          club_role?: string | null
           created_at?: string | null
           email?: string | null
           full_name?: string | null
