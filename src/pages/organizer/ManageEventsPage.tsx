@@ -32,9 +32,7 @@ const ManageEventsPage = () => {
   };
   
   const handleEditEvent = (eventId: string) => {
-    // This would navigate to an event edit page
-    // For now, we'll just log the action
-    console.log(`Edit event with ID: ${eventId}`);
+    navigate(`/edit-event/${eventId}`);
   };
   
   const getEventStatus = (event: Event) => {

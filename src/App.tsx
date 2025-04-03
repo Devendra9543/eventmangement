@@ -20,6 +20,7 @@ import StudentDashboard from "./pages/dashboard/StudentDashboard";
 import OrganizerDashboard from "./pages/dashboard/OrganizerDashboard";
 import EventDetailsPage from "./pages/events/EventDetailsPage";
 import CreateEventPage from "./pages/events/CreateEventPage";
+import EditEventPage from "./pages/events/EditEventPage";
 import ClubEventsPage from "./pages/events/ClubEventsPage";
 import EventCategoryPage from "./pages/events/EventCategoryPage";
 import NotificationsPage from "./pages/notifications/NotificationsPage";
@@ -61,6 +62,7 @@ const App = () => (
                   {/* Organizer Routes */}
                   <Route path="/dashboard/organizer" element={<OrganizerDashboard />} />
                   <Route path="/create-event" element={<CreateEventPage />} />
+                  <Route path="/edit-event/:eventId" element={<EditEventPage />} />
                   <Route path="/manage-events" element={<ManageEventsPage />} />
                   <Route path="/manage-registrations/:eventId" element={<ManageRegistrationsPage />} />
                   <Route path="/analytics" element={<AnalyticsPage />} />
