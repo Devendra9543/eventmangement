@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -41,7 +40,6 @@ const CreateEventPage = () => {
   });
   
   useEffect(() => {
-    // Check authentication and user type
     if (!user) {
       toast({
         title: "Authentication Required",
@@ -62,12 +60,10 @@ const CreateEventPage = () => {
       return;
     }
 
-    // Set loading to false once profile is loaded
     if (profile) {
       console.log("Profile data in create event:", profile);
       setIsLoading(false);
     } else {
-      // Set a timeout to stop showing loading state after some time
       const timer = setTimeout(() => {
         setIsLoading(false);
       }, 3000);
@@ -87,7 +83,6 @@ const CreateEventPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Organizer validation fix - check if user and profile exist and user is organizer
     if (!user || userType !== 'organizer') {
       toast({
         title: 'Error',
@@ -97,7 +92,6 @@ const CreateEventPage = () => {
       return;
     }
 
-    // If club_name is missing, warn user but allow them to continue
     if (!profile?.club_name) {
       toast({
         title: 'Warning',
@@ -106,7 +100,6 @@ const CreateEventPage = () => {
       });
     }
     
-    // Validate all fields
     if (!formData.title || !formData.description || !formData.date || 
         !formData.time || !formData.location || !formData.category || 
         !formData.price || !formData.maxAttendees || !formData.dueDate) {
@@ -118,7 +111,6 @@ const CreateEventPage = () => {
       return;
     }
     
-    // Validate dates
     const eventDate = new Date(formData.date);
     const dueDate = new Date(formData.dueDate);
     const today = new Date();
@@ -144,7 +136,6 @@ const CreateEventPage = () => {
     setIsLoading(true);
     
     try {
-      // Use the club name from profile or a default value if it's missing
       const clubName = profile?.club_name || 'Unnamed Club';
       
       const success = await createEvent({
