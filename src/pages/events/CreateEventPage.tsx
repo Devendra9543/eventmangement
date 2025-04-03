@@ -87,13 +87,23 @@ const CreateEventPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user || userType !== 'organizer' || !profile?.club_name) {
+    // Organizer validation fix - check if user and profile exist and user is organizer
+    if (!user || userType !== 'organizer') {
       toast({
         title: 'Error',
         description: 'You must be logged in as an organizer to create events',
         variant: 'destructive',
       });
       return;
+    }
+
+    // If club_name is missing, warn user but allow them to continue
+    if (!profile?.club_name) {
+      toast({
+        title: 'Warning',
+        description: 'Your club name is not set. Please update your profile after creating this event.',
+        variant: 'default',
+      });
     }
     
     // Validate all fields
@@ -134,13 +144,16 @@ const CreateEventPage = () => {
     setIsLoading(true);
     
     try {
+      // Use the club name from profile or a default value if it's missing
+      const clubName = profile?.club_name || 'Unnamed Club';
+      
       const success = await createEvent({
         title: formData.title,
         description: formData.description,
         date: formData.date,
         time: formData.time,
         location: formData.location,
-        club: profile.club_name as any,
+        club: clubName as any,
         category: formData.category as any,
         price: Number(formData.price),
         organizerId: user.id,
