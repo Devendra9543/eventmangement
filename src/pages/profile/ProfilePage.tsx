@@ -47,12 +47,16 @@ const ProfilePage = () => {
   
   useEffect(() => {
     if (!isAuthenticated) {
+      console.log("User not authenticated, redirecting to login");
       navigate('/login');
     } else if (profile) {
+      console.log("Profile data loaded:", profile);
       setIsLoading(false);
     } else {
+      console.log("Waiting for profile data to load...");
       const timer = setTimeout(() => {
         if (!profile) {
+          console.log("Profile data still not loaded after timeout");
           toast({
             title: "Error loading profile",
             description: "Please try refreshing the page",
@@ -94,6 +98,7 @@ const ProfilePage = () => {
   // Update form values when profile data loads
   useEffect(() => {
     if (profile) {
+      console.log("Updating form with profile data:", profile);
       form.reset({
         full_name: profile.full_name || "",
         mobile: profile.mobile || "",
@@ -104,17 +109,21 @@ const ProfilePage = () => {
     }
   }, [profile, form]);
   
+  // Prepare user data object with defaults to prevent undefined values
   const userData = {
     name: profile?.full_name || "Unknown User",
     email: profile?.email || "No email provided",
     phone: profile?.mobile || "No phone number provided",
     department: userType === 'student' ? (profile?.class_branch || "No department") : null,
     clubName: userType === 'organizer' ? (profile?.club_name || "No club") : null,
-    clubRole: profile?.club_role || "No role"
+    clubRole: userType === 'organizer' ? (profile?.club_role || "No role") : null
   };
+
+  console.log("Current userData object:", userData);
 
   const handleEditProfile = async (data: any) => {
     try {
+      console.log("Updating profile with data:", data);
       const updatedFields = userType === 'student' 
         ? {
             full_name: data.full_name,
@@ -239,7 +248,7 @@ const ProfilePage = () => {
               </div>
             </div>
             
-            {userType === 'student' && userData.department && (
+            {userType === 'student' && (
               <div className="flex items-center py-3 px-4">
                 <Book size={18} className="text-gray-500 mr-3" />
                 <div>
@@ -249,7 +258,7 @@ const ProfilePage = () => {
               </div>
             )}
             
-            {userType === 'organizer' && (
+            {userType === 'organizer' && userData.clubName && (
               <div className="flex items-center py-3 px-4">
                 <Users size={18} className="text-gray-500 mr-3" />
                 <div>
@@ -259,7 +268,7 @@ const ProfilePage = () => {
               </div>
             )}
             
-            {userType === 'organizer' && (
+            {userType === 'organizer' && userData.clubRole && (
               <div className="flex items-center py-3 px-4">
                 <Users size={18} className="text-gray-500 mr-3" />
                 <div>

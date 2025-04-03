@@ -19,23 +19,29 @@ const OrganizerDashboard = () => {
   useEffect(() => {
     // Check if user is authenticated and is an organizer
     if (!isAuthenticated) {
+      console.log("User not authenticated, redirecting to login");
       navigate('/login');
       return;
     }
 
     if (userType !== 'organizer') {
+      console.log("User is not an organizer, redirecting to student dashboard");
       navigate('/dashboard/student');
       return;
     }
 
     // Set loading to false once profile is loaded
     if (profile) {
-      console.log("Profile data in dashboard:", profile);
+      console.log("Profile data in organizer dashboard:", profile);
       setIsLoading(false);
     } else {
+      console.log("Waiting for profile data to load in organizer dashboard...");
       // Set a timeout to stop showing loading state after some time
       const timer = setTimeout(() => {
-        setIsLoading(false);
+        if (!profile) {
+          console.log("Profile data still not loaded after timeout in organizer dashboard");
+          setIsLoading(false);
+        }
       }, 3000);
       return () => clearTimeout(timer);
     }
