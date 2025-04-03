@@ -1,5 +1,5 @@
 
-import { Home, Calendar, User } from 'lucide-react';
+import { Home, Calendar, User, BarChart } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -19,6 +19,7 @@ const BottomNavigation = () => {
   const organizerNavItems = [
     { name: 'Home', path: '/dashboard/organizer', icon: Home },
     { name: 'Events', path: '/manage-events', icon: Calendar },
+    { name: 'Analytics', path: '/analytics', icon: BarChart },
     { name: 'Profile', path: '/profile', icon: User }
   ];
 

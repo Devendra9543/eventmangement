@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useEvents } from '../../contexts/EventContext';
@@ -7,6 +7,7 @@ import { ExtendedUser } from '@/types/auth';
 import { useToast } from '@/hooks/use-toast';
 import PageHeader from '@/components/common/PageHeader';
 import BottomNavigation from '@/components/common/BottomNavigation';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -20,10 +21,11 @@ import {
 
 const CreateEventPage = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, userType, profile } = useAuth();
   const extendedUser = user as ExtendedUser | null;
   const { createEvent, categories } = useEvents();
   const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(true);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -38,7 +40,40 @@ const CreateEventPage = () => {
     imageUrl: '/assets/events/default.jpg', 
   });
   
-  const [isLoading, setIsLoading] = useState(false);
+  useEffect(() => {
+    // Check authentication and user type
+    if (!user) {
+      toast({
+        title: "Authentication Required",
+        description: "Please log in to create events",
+        variant: "destructive",
+      });
+      navigate('/login');
+      return;
+    }
+
+    if (userType !== 'organizer') {
+      toast({
+        title: "Access Denied",
+        description: "Only organizers can create events",
+        variant: "destructive",
+      });
+      navigate('/dashboard/student');
+      return;
+    }
+
+    // Set loading to false once profile is loaded
+    if (profile) {
+      console.log("Profile data in create event:", profile);
+      setIsLoading(false);
+    } else {
+      // Set a timeout to stop showing loading state after some time
+      const timer = setTimeout(() => {
+        setIsLoading(false);
+      }, 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [user, userType, navigate, profile, toast]);
   
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -52,7 +87,7 @@ const CreateEventPage = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!user || extendedUser?.userType !== 'organizer' || !extendedUser?.clubName) {
+    if (!user || userType !== 'organizer' || !profile?.club_name) {
       toast({
         title: 'Error',
         description: 'You must be logged in as an organizer to create events',
@@ -105,7 +140,7 @@ const CreateEventPage = () => {
         date: formData.date,
         time: formData.time,
         location: formData.location,
-        club: extendedUser.clubName as any,
+        club: profile.club_name as any,
         category: formData.category as any,
         price: Number(formData.price),
         organizerId: user.id,
@@ -138,6 +173,14 @@ const CreateEventPage = () => {
       setIsLoading(false);
     }
   };
+  
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex justify-center items-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen pb-16 bg-gray-50">
