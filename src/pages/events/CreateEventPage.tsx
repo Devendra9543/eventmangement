@@ -1,15 +1,18 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
 import { useEvents } from '../../contexts/EventContext';
 import { ExtendedUser } from '@/types/auth';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
 import PageHeader from '@/components/common/PageHeader';
 import BottomNavigation from '@/components/common/BottomNavigation';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Upload, ImageIcon, Loader2 } from 'lucide-react';
 import { 
   Select, 
   SelectContent, 
@@ -25,6 +28,7 @@ const CreateEventPage = () => {
   const { createEvent, categories } = useEvents();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(true);
+  const [uploadingImage, setUploadingImage] = useState(false);
   
   const [formData, setFormData] = useState({
     title: '',
@@ -78,6 +82,71 @@ const CreateEventPage = () => {
   
   const handleSelectChange = (name: string, value: string) => {
     setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    // Check file size (limit to 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: 'Error',
+        description: 'Image file size must be less than 5MB',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: 'Error',
+        description: 'File must be an image',
+        variant: 'destructive',
+      });
+      return;
+    }
+    
+    try {
+      setUploadingImage(true);
+      
+      // Generate a unique file name
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
+      const filePath = `events/${fileName}`;
+      
+      // Upload to Supabase Storage
+      const { data, error } = await supabase.storage
+        .from('event-images')
+        .upload(filePath, file);
+      
+      if (error) throw error;
+      
+      // Get the public URL
+      const { data: publicUrlData } = supabase.storage
+        .from('event-images')
+        .getPublicUrl(filePath);
+      
+      setFormData(prev => ({ 
+        ...prev, 
+        imageUrl: publicUrlData.publicUrl 
+      }));
+      
+      toast({
+        title: 'Success',
+        description: 'Image uploaded successfully',
+      });
+    } catch (error: any) {
+      console.error('Error uploading image:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Error uploading image',
+        variant: 'destructive',
+      });
+    } finally {
+      setUploadingImage(false);
+    }
   };
   
   const handleSubmit = async (e: React.FormEvent) => {
@@ -308,11 +377,56 @@ const CreateEventPage = () => {
               />
             </div>
           </div>
+
+          <div>
+            <label className="text-sm font-medium text-gray-700">Event Image</label>
+            <div className="mt-1 flex items-center">
+              <div className="w-full">
+                {formData.imageUrl && formData.imageUrl !== '/assets/events/default.jpg' ? (
+                  <div className="relative">
+                    <img 
+                      src={formData.imageUrl}
+                      alt="Event preview"
+                      className="h-40 w-full object-cover rounded-md"
+                    />
+                  </div>
+                ) : (
+                  <div className="flex justify-center items-center h-40 bg-gray-100 rounded-md border-2 border-dashed border-gray-300">
+                    <ImageIcon className="h-12 w-12 text-gray-400" />
+                  </div>
+                )}
+                
+                <label className="mt-2 flex cursor-pointer items-center justify-center gap-2 rounded-md bg-collegeBlue-500 px-4 py-2 text-sm font-medium text-white hover:bg-collegeBlue-600">
+                  {uploadingImage ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Uploading...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="h-4 w-4" />
+                      Upload Image
+                    </>
+                  )}
+                  <input 
+                    type="file" 
+                    className="hidden" 
+                    accept="image/*"
+                    onChange={handleImageUpload}
+                    disabled={uploadingImage}
+                  />
+                </label>
+              </div>
+            </div>
+            <p className="text-xs text-gray-500 mt-1">
+              Recommended: JPG, PNG or GIF. Max size: 5MB
+            </p>
+          </div>
           
           <Button
             type="submit"
             className="w-full bg-collegeBlue-500 hover:bg-collegeBlue-600 text-white"
-            disabled={isLoading}
+            disabled={isLoading || uploadingImage}
           >
             {isLoading ? 'Creating...' : 'Create Event'}
           </Button>

@@ -83,14 +83,15 @@ const EventDetailsPage = () => {
           description: `You are now registered for ${event.title}`,
         });
         
-        // If the event has a price > 0, we could navigate to a payment page here
+        // If the event has a price > 0, redirect to payment page
         if (event.price > 0) {
           toast({
             title: "Payment Required",
-            description: `Please complete the payment of ₹${event.price} to confirm your spot`,
+            description: `Redirecting to payment page for ₹${event.price}`,
           });
-          // In a real app, redirect to payment page
-          // navigate('/payment/' + event.id);
+          
+          // Redirect to payment page with event ID and price
+          navigate(`/payment/${event.id}?amount=${event.price}`);
         }
       }
     } catch (error) {

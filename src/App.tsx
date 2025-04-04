@@ -23,6 +23,7 @@ import CreateEventPage from "./pages/events/CreateEventPage";
 import EditEventPage from "./pages/events/EditEventPage";
 import ClubEventsPage from "./pages/events/ClubEventsPage";
 import EventCategoryPage from "./pages/events/EventCategoryPage";
+import PaymentPage from "./pages/events/PaymentPage";
 import NotificationsPage from "./pages/notifications/NotificationsPage";
 import ProfilePage from "./pages/profile/ProfilePage";
 import ManageEventsPage from "./pages/organizer/ManageEventsPage";
@@ -58,6 +59,7 @@ const App = () => (
                   <Route path="/clubs/:clubId" element={<ClubEventsPage />} />
                   <Route path="/category/:clubId/:categoryId" element={<EventCategoryPage />} />
                   <Route path="/event/:eventId" element={<EventDetailsPage />} />
+                  <Route path="/payment/:eventId" element={<PaymentPage />} />
                   
                   {/* Organizer Routes */}
                   <Route path="/dashboard/organizer" element={<OrganizerDashboard />} />
