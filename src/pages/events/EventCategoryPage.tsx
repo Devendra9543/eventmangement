@@ -1,69 +1,60 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import PageHeader from '@/components/common/PageHeader';
 import BottomNavigation from '@/components/common/BottomNavigation';
+import { useEvents } from '@/contexts/EventContext';
+import { Event } from '@/contexts/EventContext';
+import { Loader2 } from 'lucide-react';
+import EventCard from '@/components/common/EventCard';
 
 const EventCategoryPage = () => {
   const { clubId, categoryId } = useParams();
+  const { events, loadingEvents } = useEvents();
+  const [filteredEvents, setFilteredEvents] = useState<Event[]>([]);
   
-  // Mock data - in a real app you would fetch this from an API
-  const category = {
-    id: categoryId,
-    name: categoryId === 'tech' ? 'Technical' : categoryId === 'cultural' ? 'Cultural' : 'Workshop'
-  };
-  
-  const events = [
-    {
-      id: "1",
-      title: "Web Development Workshop",
-      date: "Dec 15, 2023",
-      time: "2:00 PM",
-      location: "Room 301",
-      organizerName: "CSI Club"
-    },
-    {
-      id: "2",
-      title: "Hackathon 2023",
-      date: "Dec 20, 2023",
-      time: "9:00 AM",
-      location: "Computer Lab",
-      organizerName: "CSI Club"
-    },
-    {
-      id: "3",
-      title: "AI Basics Workshop",
-      date: "Jan 5, 2024",
-      time: "11:00 AM",
-      location: "Seminar Hall",
-      organizerName: "CSI Club"
+  useEffect(() => {
+    if (!loadingEvents && clubId && categoryId) {
+      // Filter events by club and category
+      const filtered = events.filter(
+        event => event.club === clubId && event.category === categoryId
+      );
+      
+      // Sort by date, most recent first
+      filtered.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+      
+      setFilteredEvents(filtered);
     }
-  ];
+  }, [clubId, categoryId, events, loadingEvents]);
+  
+  if (loadingEvents) {
+    return (
+      <div className="min-h-screen flex justify-center items-center">
+        <Loader2 className="h-8 w-8 animate-spin text-collegeBlue-500" />
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen pb-16 bg-gray-50">
-      <PageHeader title={category.name} showBack={true} showNotifications={true} />
+      <PageHeader title={categoryId || 'Events'} showBack={true} showNotifications={true} />
       
-      <div className="p-4 pt-16">
-        <h2 className="text-xl font-semibold mb-4 text-collegeBlue-900">Upcoming Events</h2>
+      <div className="p-4">
+        <h2 className="text-xl font-semibold mb-4 text-collegeBlue-900">
+          {filteredEvents.length > 0 ? 'Upcoming Events' : 'No Events Found'}
+        </h2>
         
-        <div className="space-y-4">
-          {events.map((event) => (
-            <a 
-              key={event.id} 
-              href={`/event/${event.id}`}
-              className="block bg-white p-4 rounded-lg shadow"
-            >
-              <div className="mb-2 h-32 bg-gray-200 rounded"></div>
-              <h3 className="font-medium text-collegeBlue-900">{event.title}</h3>
-              <p className="text-sm text-gray-500 mb-2">{event.organizerName}</p>
-              <div className="flex justify-between text-xs text-gray-500">
-                <span>{event.date}, {event.time}</span>
-                <span>{event.location}</span>
-              </div>
-            </a>
-          ))}
-        </div>
+        {filteredEvents.length > 0 ? (
+          <div className="space-y-4">
+            {filteredEvents.map((event) => (
+              <EventCard key={event.id} event={event} />
+            ))}
+          </div>
+        ) : (
+          <div className="bg-white p-4 rounded-lg shadow text-center">
+            <p className="text-gray-500">No events found in this category</p>
+          </div>
+        )}
       </div>
       
       <BottomNavigation />
