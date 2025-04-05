@@ -90,8 +90,8 @@ const EventDetailsPage = () => {
             description: `Redirecting to payment page for ₹${event.price}`,
           });
           
-          // Redirect to payment page with event ID and price
-          navigate(`/payment/${event.id}?amount=${event.price}`);
+          // Redirect to payment page with event ID
+          navigate(`/payment/${event.id}`);
         }
       }
     } catch (error) {

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../contexts/AuthContext';
@@ -114,9 +113,9 @@ const CreateEventPage = () => {
       // Generate a unique file name
       const fileExt = file.name.split('.').pop();
       const fileName = `${Math.random().toString(36).substring(2, 15)}_${Date.now()}.${fileExt}`;
-      const filePath = `events/${fileName}`;
+      const filePath = `${fileName}`;
       
-      // Upload to Supabase Storage
+      // Upload to Supabase Storage - using the correct bucket ID
       const { data, error } = await supabase.storage
         .from('event-images')
         .upload(filePath, file);

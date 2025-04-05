@@ -357,7 +357,7 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
           description: "You've already registered for this event",
           variant: "default",
         });
-        return false;
+        return true; // Return true to allow payment page redirect for already registered users
       }
       
       // Insert registration into Supabase
