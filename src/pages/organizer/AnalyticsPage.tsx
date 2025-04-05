@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import PageHeader from '@/components/common/PageHeader';
 import BottomNavigation from '@/components/common/BottomNavigation';
 import { 
@@ -11,31 +11,160 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from 'recharts';
+import { useAuth } from '@/contexts/AuthContext';
+import { useEvents } from '@/contexts/EventContext';
+import LoadingSpinner from '@/components/common/LoadingSpinner';
+import { supabase } from '@/integrations/supabase/client';
+import { Event } from '@/contexts/EventContext';
+
+interface AnalyticsStats {
+  totalEvents: number;
+  totalRegistrations: number;
+  avgAttendance: number;
+  popularEvent: string;
+  maxRegistrations: number;
+}
+
+interface EventRegistration {
+  name: string;
+  registrations: number;
+}
+
+interface MonthlyData {
+  month: string;
+  events: number;
+  participants: number;
+}
 
 const AnalyticsPage = () => {
-  // Mock data - would come from API in a real app
-  const eventData = [
-    { name: 'Tech Workshop', registrations: 45 },
-    { name: 'Cultural Night', registrations: 78 },
-    { name: 'Coding Competition', registrations: 62 },
-    { name: 'Seminar', registrations: 25 }
-  ];
+  const { profile } = useAuth();
+  const { events } = useEvents();
+  const [isLoading, setIsLoading] = useState(true);
+  const [stats, setStats] = useState<AnalyticsStats>({
+    totalEvents: 0,
+    totalRegistrations: 0,
+    avgAttendance: 0,
+    popularEvent: "",
+    maxRegistrations: 0
+  });
+  const [eventData, setEventData] = useState<EventRegistration[]>([]);
+  const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
   
-  const monthlyData = [
-    { month: 'Jan', events: 2, participants: 85 },
-    { month: 'Feb', events: 3, participants: 120 },
-    { month: 'Mar', events: 1, participants: 40 },
-    { month: 'Apr', events: 4, participants: 180 },
-    { month: 'May', events: 2, participants: 95 }
-  ];
+  useEffect(() => {
+    const fetchAnalyticsData = async () => {
+      if (!profile) return;
+      
+      try {
+        setIsLoading(true);
+        
+        // Filter events by the organizer
+        const organizerEvents = events.filter(event => event.organizerId === profile.id);
+        
+        if (organizerEvents.length === 0) {
+          setIsLoading(false);
+          return;
+        }
+        
+        // Fetch registrations for organizer's events
+        const eventIds = organizerEvents.map(event => event.id);
+        const { data: registrations, error } = await supabase
+          .from('registrations')
+          .select('*')
+          .in('event_id', eventIds);
+          
+        if (error) {
+          console.error('Error fetching registrations:', error);
+          setIsLoading(false);
+          return;
+        }
+        
+        // Process event registration data
+        const eventsWithRegistrations = organizerEvents.map(event => ({
+          id: event.id,
+          name: event.title,
+          registrations: registrations?.filter(reg => reg.event_id === event.id).length || 0
+        }));
+        
+        // Sort by registrations for chart display (show top 4)
+        const sortedEvents = [...eventsWithRegistrations]
+          .sort((a, b) => b.registrations - a.registrations)
+          .slice(0, 4);
+          
+        // Find most popular event
+        const mostPopular = eventsWithRegistrations.reduce(
+          (prev, current) => (current.registrations > prev.registrations) ? current : prev, 
+          { id: '', name: 'None', registrations: 0 }
+        );
+        
+        // Calculate total registrations
+        const totalRegs = eventsWithRegistrations.reduce(
+          (sum, event) => sum + event.registrations, 0
+        );
+        
+        // Calculate average attendance
+        const avgAttendance = organizerEvents.length > 0 
+          ? (totalRegs / organizerEvents.length).toFixed(1)
+          : '0';
+          
+        // Generate monthly data
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const currentDate = new Date();
+        const monthlyStats: MonthlyData[] = [];
+        
+        // Get data for the last 5 months
+        for (let i = 4; i >= 0; i--) {
+          const monthIndex = (currentDate.getMonth() - i + 12) % 12;
+          const month = months[monthIndex];
+          const year = i > currentDate.getMonth() 
+            ? currentDate.getFullYear() - 1 
+            : currentDate.getFullYear();
+            
+          // Count events in this month
+          const eventsInMonth = organizerEvents.filter(event => {
+            const eventDate = new Date(event.date);
+            return eventDate.getMonth() === monthIndex && eventDate.getFullYear() === year;
+          });
+          
+          // Count participants in this month
+          const participantsInMonth = eventsInMonth.reduce(
+            (sum, event) => sum + event.currentAttendees, 0
+          );
+          
+          monthlyStats.push({
+            month,
+            events: eventsInMonth.length,
+            participants: participantsInMonth
+          });
+        }
+        
+        // Update state with analytics data
+        setStats({
+          totalEvents: organizerEvents.length,
+          totalRegistrations: totalRegs,
+          avgAttendance: parseFloat(avgAttendance),
+          popularEvent: mostPopular.name,
+          maxRegistrations: mostPopular.registrations
+        });
+        
+        setEventData(sortedEvents);
+        setMonthlyData(monthlyStats);
+      } catch (error) {
+        console.error('Error generating analytics:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    
+    fetchAnalyticsData();
+  }, [profile, events]);
   
-  const stats = {
-    totalEvents: 12,
-    totalRegistrations: 523,
-    avgAttendance: 43.6,
-    popularEvent: 'Cultural Night',
-    maxRegistrations: 78
-  };
+  if (isLoading) {
+    return (
+      <div className="min-h-screen flex justify-center items-center">
+        <LoadingSpinner />
+      </div>
+    );
+  }
   
   return (
     <div className="min-h-screen pb-16 bg-gray-50">
@@ -60,40 +189,56 @@ const AnalyticsPage = () => {
           
           <div className="bg-white rounded-lg shadow p-3">
             <h3 className="text-xs text-gray-500">Most Popular</h3>
-            <p className="text-lg font-bold text-collegeBlue-700 truncate">{stats.popularEvent}</p>
+            <p className="text-lg font-bold text-collegeBlue-700 truncate">
+              {stats.popularEvent || 'No events yet'}
+            </p>
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <h3 className="font-medium mb-2">Event Registrations</h3>
-          <div className="h-60">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={eventData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip />
-                <Bar dataKey="registrations" fill="#4338ca" />
-              </BarChart>
-            </ResponsiveContainer>
+        {eventData.length > 0 ? (
+          <div className="bg-white rounded-lg shadow p-4 mb-6">
+            <h3 className="font-medium mb-2">Event Registrations</h3>
+            <div className="h-60">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={eventData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip />
+                  <Bar dataKey="registrations" fill="#4338ca" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow p-4 mb-6 text-center">
+            <h3 className="font-medium mb-2">Event Registrations</h3>
+            <p className="text-gray-500">No event registration data available</p>
+          </div>
+        )}
         
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <h3 className="font-medium mb-2">Monthly Trends</h3>
-          <div className="h-60">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={monthlyData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip />
-                <Bar dataKey="events" fill="#4338ca" name="Events" />
-                <Bar dataKey="participants" fill="#06b6d4" name="Participants" />
-              </BarChart>
-            </ResponsiveContainer>
+        {monthlyData.length > 0 ? (
+          <div className="bg-white rounded-lg shadow p-4 mb-6">
+            <h3 className="font-medium mb-2">Monthly Trends</h3>
+            <div className="h-60">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={monthlyData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <Tooltip />
+                  <Bar dataKey="events" fill="#4338ca" name="Events" />
+                  <Bar dataKey="participants" fill="#06b6d4" name="Participants" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </div>
-        </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow p-4 mb-6 text-center">
+            <h3 className="font-medium mb-2">Monthly Trends</h3>
+            <p className="text-gray-500">No monthly trend data available</p>
+          </div>
+        )}
       </div>
       
       <BottomNavigation />
