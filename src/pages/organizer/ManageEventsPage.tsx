@@ -8,13 +8,13 @@ import PageHeader from '@/components/common/PageHeader';
 import CollegeBanner from '@/components/common/CollegeBanner';
 import BottomNavigation from '@/components/common/BottomNavigation';
 import { Button } from '@/components/ui/button';
-import { Loader2 } from 'lucide-react';
+import { Loader2, MessageSquare } from 'lucide-react';
 import { formatDate } from '@/lib/utils';
 
 const ManageEventsPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { events, loadingEvents } = useEvents();
+  const { events, loadingEvents, getFeedbackByEvent } = useEvents();
   const [organizerEvents, setOrganizerEvents] = useState<Event[]>([]);
   
   useEffect(() => {
@@ -35,6 +35,10 @@ const ManageEventsPage = () => {
     navigate(`/edit-event/${eventId}`);
   };
   
+  const handleViewFeedback = (eventId: string) => {
+    navigate(`/event-feedback/${eventId}`);
+  };
+  
   const getEventStatus = (event: Event) => {
     const eventDate = new Date(event.date);
     const today = new Date();
@@ -44,6 +48,10 @@ const ManageEventsPage = () => {
     } else {
       return 'upcoming';
     }
+  };
+
+  const hasFeedback = (eventId: string): boolean => {
+    return getFeedbackByEvent(eventId).length > 0;
   };
   
   return (
@@ -69,45 +77,74 @@ const ManageEventsPage = () => {
           </div>
         ) : organizerEvents.length > 0 ? (
           <div className="space-y-4">
-            {organizerEvents.map((event) => (
-              <div
-                key={event.id}
-                className="bg-white rounded-lg shadow p-4"
-              >
-                <div className="flex justify-between items-center">
-                  <h3 className="font-medium">{event.title}</h3>
-                  <span 
-                    className={`text-xs px-2 py-1 rounded ${
-                      getEventStatus(event) === 'upcoming' 
-                        ? 'bg-collegeBlue-100 text-collegeBlue-700' 
-                        : 'bg-gray-100 text-gray-700'
-                    }`}
-                  >
-                    {getEventStatus(event)}
-                  </span>
+            {organizerEvents.map((event) => {
+              const status = getEventStatus(event);
+              const isPastEvent = status === 'completed';
+              const feedbackCount = getFeedbackByEvent(event.id).length;
+              
+              return (
+                <div
+                  key={event.id}
+                  className="bg-white rounded-lg shadow p-4"
+                >
+                  <div className="flex justify-between items-center">
+                    <h3 className="font-medium">{event.title}</h3>
+                    <span 
+                      className={`text-xs px-2 py-1 rounded ${
+                        status === 'upcoming' 
+                          ? 'bg-collegeBlue-100 text-collegeBlue-700' 
+                          : 'bg-gray-100 text-gray-700'
+                      }`}
+                    >
+                      {status}
+                    </span>
+                  </div>
+                  <p className="text-sm text-gray-500 mt-1">Date: {formatDate(event.date)}</p>
+                  <p className="text-sm text-gray-500">Registrations: {event.currentAttendees}/{event.maxAttendees}</p>
+                  
+                  {isPastEvent && (
+                    <p className="text-sm text-gray-500 flex items-center mt-1">
+                      <MessageSquare className="h-3 w-3 mr-1" />
+                      Feedback: {feedbackCount} {feedbackCount === 1 ? 'review' : 'reviews'}
+                    </p>
+                  )}
+                  
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <Button
+                      onClick={() => handleViewRegistrations(event.id)}
+                      variant="outline"
+                      size="sm"
+                      className="text-xs"
+                    >
+                      View Registrations
+                    </Button>
+                    
+                    {!isPastEvent && (
+                      <Button
+                        onClick={() => handleEditEvent(event.id)}
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                      >
+                        Edit Event
+                      </Button>
+                    )}
+                    
+                    {isPastEvent && (
+                      <Button
+                        onClick={() => handleViewFeedback(event.id)}
+                        variant="outline"
+                        size="sm"
+                        className="text-xs flex items-center"
+                      >
+                        <MessageSquare className="h-3 w-3 mr-1" />
+                        View Feedback
+                      </Button>
+                    )}
+                  </div>
                 </div>
-                <p className="text-sm text-gray-500 mt-1">Date: {formatDate(event.date)}</p>
-                <p className="text-sm text-gray-500">Registrations: {event.currentAttendees}/{event.maxAttendees}</p>
-                <div className="mt-3 flex gap-2">
-                  <Button
-                    onClick={() => handleViewRegistrations(event.id)}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                  >
-                    View Registrations
-                  </Button>
-                  <Button
-                    onClick={() => handleEditEvent(event.id)}
-                    variant="outline"
-                    size="sm"
-                    className="text-xs"
-                  >
-                    Edit Event
-                  </Button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="bg-white rounded-lg shadow p-4 text-center">

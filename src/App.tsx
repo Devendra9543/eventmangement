@@ -29,6 +29,7 @@ import ProfilePage from "./pages/profile/ProfilePage";
 import ManageEventsPage from "./pages/organizer/ManageEventsPage";
 import ManageRegistrationsPage from "./pages/organizer/ManageRegistrationsPage";
 import AnalyticsPage from "./pages/organizer/AnalyticsPage";
+import EventFeedbackPage from "./pages/organizer/EventFeedbackPage";
 import NotFound from "./pages/NotFound";
 
 // Create a new QueryClient instance outside the component
@@ -67,6 +68,7 @@ const App = () => (
                   <Route path="/edit-event/:eventId" element={<EditEventPage />} />
                   <Route path="/manage-events" element={<ManageEventsPage />} />
                   <Route path="/manage-registrations/:eventId" element={<ManageRegistrationsPage />} />
+                  <Route path="/event-feedback/:eventId" element={<EventFeedbackPage />} />
                   <Route path="/analytics" element={<AnalyticsPage />} />
                   
                   {/* Common Routes */}

@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { useAuth } from './AuthContext';
 import { ExtendedUser } from '@/types/auth';
@@ -34,9 +33,19 @@ interface Registration {
   paymentStatus: 'pending' | 'completed';
 }
 
+export interface Feedback {
+  id: string;
+  eventId: string;
+  userId: string;
+  rating: number;
+  comment?: string;
+  createdAt: string;
+}
+
 interface EventContextType {
   events: Event[];
   registrations: Registration[];
+  feedback: Feedback[];
   clubs: ClubType[];
   categories: CategoryType[];
   createEvent: (event: Omit<Event, 'id'>) => Promise<boolean>;
@@ -47,6 +56,10 @@ interface EventContextType {
   getEventsByCategory: (category: CategoryType) => Event[];
   getRegistrationsByEvent: (eventId: string) => Registration[];
   getEventById: (eventId: string) => Event | undefined;
+  submitFeedback: (eventId: string, userId: string, rating: number, comment?: string) => Promise<boolean>;
+  getFeedbackByEvent: (eventId: string) => Feedback[];
+  getFeedbackByUser: (userId: string) => Feedback[];
+  hasUserSubmittedFeedback: (eventId: string, userId: string) => boolean;
   triggerEventNotification: (title: string, message: string, eventId?: string) => void;
   loadingEvents: boolean;
 }
@@ -56,6 +69,7 @@ const EventContext = createContext<EventContextType | undefined>(undefined);
 export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [events, setEvents] = useState<Event[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [loadingEvents, setLoadingEvents] = useState<boolean>(true);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -150,7 +164,6 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
             const eventIds = organizerEvents.map(event => event.id);
             query = query.in('event_id', eventIds);
           } else {
-            // If organizer has no events, return empty array
             setRegistrations([]);
             return;
           }
@@ -180,6 +193,61 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     };
     
     fetchRegistrations();
+  }, [user]);
+
+  // Effect to fetch feedback
+  useEffect(() => {
+    const fetchFeedback = async () => {
+      if (!user) return;
+      
+      try {
+        const extendedUser = user as ExtendedUser;
+        let query = supabase.from('event_feedback').select('*');
+        
+        // If user is a student, only fetch their feedback
+        if (extendedUser.userType === 'student') {
+          query = query.eq('user_id', user.id);
+        } 
+        // If user is an organizer, fetch feedback for their events
+        else if (extendedUser.userType === 'organizer') {
+          const { data: organizerEvents } = await supabase
+            .from('events')
+            .select('id')
+            .eq('organizer_id', user.id);
+          
+          if (organizerEvents && organizerEvents.length > 0) {
+            const eventIds = organizerEvents.map(event => event.id);
+            query = query.in('event_id', eventIds);
+          } else {
+            setFeedback([]);
+            return;
+          }
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) {
+          console.error('Error fetching feedback:', error);
+          return;
+        }
+        
+        // Convert the data to match our Feedback interface
+        const formattedFeedback: Feedback[] = data.map(item => ({
+          id: item.id,
+          eventId: item.event_id,
+          userId: item.user_id,
+          rating: item.rating,
+          comment: item.comment || undefined,
+          createdAt: new Date(item.created_at).toISOString()
+        }));
+        
+        setFeedback(formattedFeedback);
+      } catch (error) {
+        console.error('Error in fetchFeedback:', error);
+      }
+    };
+    
+    fetchFeedback();
   }, [user]);
 
   const createEvent = async (eventData: Omit<Event, 'id'>): Promise<boolean> => {
@@ -428,6 +496,91 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
     }
   };
 
+  const submitFeedback = async (
+    eventId: string, 
+    userId: string, 
+    rating: number, 
+    comment?: string
+  ): Promise<boolean> => {
+    try {
+      // Check if user has already submitted feedback for this event
+      const existingFeedback = feedback.find(
+        f => f.eventId === eventId && f.userId === userId
+      );
+      
+      if (existingFeedback) {
+        toast({
+          title: "Feedback Already Submitted",
+          description: "You've already provided feedback for this event",
+          variant: "default",
+        });
+        return false;
+      }
+      
+      // Insert feedback into Supabase
+      const { data, error } = await supabase
+        .from('event_feedback')
+        .insert({
+          event_id: eventId,
+          user_id: userId,
+          rating: rating,
+          comment: comment || null
+        })
+        .select()
+        .single();
+      
+      if (error) {
+        console.error('Submit feedback error:', error);
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to submit feedback',
+          variant: 'destructive',
+        });
+        return false;
+      }
+      
+      // Add feedback to local state
+      const newFeedback: Feedback = {
+        id: data.id,
+        eventId: data.event_id,
+        userId: data.user_id,
+        rating: data.rating,
+        comment: data.comment || undefined,
+        createdAt: new Date(data.created_at).toISOString()
+      };
+      
+      setFeedback(prev => [...prev, newFeedback]);
+      
+      toast({
+        title: "Feedback Submitted",
+        description: "Thank you for your feedback!",
+        variant: "default",
+      });
+      
+      return true;
+    } catch (error: any) {
+      console.error('Submit feedback error:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to submit feedback',
+        variant: 'destructive',
+      });
+      return false;
+    }
+  };
+
+  const getFeedbackByEvent = (eventId: string): Feedback[] => {
+    return feedback.filter(f => f.eventId === eventId);
+  };
+
+  const getFeedbackByUser = (userId: string): Feedback[] => {
+    return feedback.filter(f => f.userId === userId);
+  };
+
+  const hasUserSubmittedFeedback = (eventId: string, userId: string): boolean => {
+    return feedback.some(f => f.eventId === eventId && f.userId === userId);
+  };
+
   const getEventsByClub = (club: ClubType): Event[] => {
     return events.filter(event => event.club === club);
   };
@@ -449,6 +602,7 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
       value={{
         events,
         registrations,
+        feedback,
         clubs,
         categories,
         createEvent,
@@ -459,6 +613,10 @@ export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) =
         getEventsByCategory,
         getRegistrationsByEvent,
         getEventById,
+        submitFeedback,
+        getFeedbackByEvent,
+        getFeedbackByUser,
+        hasUserSubmittedFeedback,
         triggerEventNotification,
         loadingEvents
       }}

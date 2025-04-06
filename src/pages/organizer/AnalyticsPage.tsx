@@ -15,7 +15,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useEvents } from '@/contexts/EventContext';
 import LoadingSpinner from '@/components/common/LoadingSpinner';
 import { supabase } from '@/integrations/supabase/client';
-import { Event } from '@/contexts/EventContext';
+import { Event, Feedback } from '@/contexts/EventContext';
 
 interface AnalyticsStats {
   totalEvents: number;
@@ -23,6 +23,8 @@ interface AnalyticsStats {
   avgAttendance: number;
   popularEvent: string;
   maxRegistrations: number;
+  avgFeedbackRating: number;
+  totalFeedback: number;
 }
 
 interface EventRegistration {
@@ -36,19 +38,28 @@ interface MonthlyData {
   participants: number;
 }
 
+interface FeedbackData {
+  name: string;
+  rating: number;
+  reviews: number;
+}
+
 const AnalyticsPage = () => {
   const { profile } = useAuth();
-  const { events } = useEvents();
+  const { events, feedback } = useEvents();
   const [isLoading, setIsLoading] = useState(true);
   const [stats, setStats] = useState<AnalyticsStats>({
     totalEvents: 0,
     totalRegistrations: 0,
     avgAttendance: 0,
     popularEvent: "",
-    maxRegistrations: 0
+    maxRegistrations: 0,
+    avgFeedbackRating: 0,
+    totalFeedback: 0
   });
   const [eventData, setEventData] = useState<EventRegistration[]>([]);
   const [monthlyData, setMonthlyData] = useState<MonthlyData[]>([]);
+  const [feedbackData, setFeedbackData] = useState<FeedbackData[]>([]);
   
   useEffect(() => {
     const fetchAnalyticsData = async () => {
@@ -137,17 +148,48 @@ const AnalyticsPage = () => {
           });
         }
         
+        // Process feedback data
+        const organizerFeedback = feedback.filter(f => 
+          eventIds.includes(f.eventId)
+        );
+        
+        // Calculate average feedback rating
+        const avgRating = organizerFeedback.length > 0
+          ? organizerFeedback.reduce((sum, f) => sum + f.rating, 0) / organizerFeedback.length
+          : 0;
+          
+        // Process feedback by event (top 4 events with most feedback)
+        const feedbackByEvent = eventIds.map(eventId => {
+          const event = organizerEvents.find(e => e.id === eventId);
+          const eventFeedback = organizerFeedback.filter(f => f.eventId === eventId);
+          const avgEventRating = eventFeedback.length > 0
+            ? eventFeedback.reduce((sum, f) => sum + f.rating, 0) / eventFeedback.length
+            : 0;
+            
+          return {
+            name: event?.title || 'Unknown',
+            rating: parseFloat(avgEventRating.toFixed(1)),
+            reviews: eventFeedback.length
+          };
+        })
+        .filter(f => f.reviews > 0)
+        .sort((a, b) => b.reviews - a.reviews)
+        .slice(0, 4);
+        
         // Update state with analytics data
         setStats({
           totalEvents: organizerEvents.length,
           totalRegistrations: totalRegs,
           avgAttendance: parseFloat(avgAttendance),
           popularEvent: mostPopular.name,
-          maxRegistrations: mostPopular.registrations
+          maxRegistrations: mostPopular.registrations,
+          avgFeedbackRating: parseFloat(avgRating.toFixed(1)),
+          totalFeedback: organizerFeedback.length
         });
         
         setEventData(sortedEvents);
         setMonthlyData(monthlyStats);
+        setFeedbackData(feedbackByEvent);
       } catch (error) {
         console.error('Error generating analytics:', error);
       } finally {
@@ -156,7 +198,7 @@ const AnalyticsPage = () => {
     };
     
     fetchAnalyticsData();
-  }, [profile, events]);
+  }, [profile, events, feedback]);
   
   if (isLoading) {
     return (
@@ -188,10 +230,8 @@ const AnalyticsPage = () => {
           </div>
           
           <div className="bg-white rounded-lg shadow p-3">
-            <h3 className="text-xs text-gray-500">Most Popular</h3>
-            <p className="text-lg font-bold text-collegeBlue-700 truncate">
-              {stats.popularEvent || 'No events yet'}
-            </p>
+            <h3 className="text-xs text-gray-500">Avg. Feedback Rating</h3>
+            <p className="text-2xl font-bold text-collegeBlue-700">{stats.avgFeedbackRating || 'N/A'}</p>
           </div>
         </div>
         
@@ -214,6 +254,28 @@ const AnalyticsPage = () => {
           <div className="bg-white rounded-lg shadow p-4 mb-6 text-center">
             <h3 className="font-medium mb-2">Event Registrations</h3>
             <p className="text-gray-500">No event registration data available</p>
+          </div>
+        )}
+        
+        {feedbackData.length > 0 ? (
+          <div className="bg-white rounded-lg shadow p-4 mb-6">
+            <h3 className="font-medium mb-2">Event Feedback Ratings</h3>
+            <div className="h-60">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={feedbackData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} domain={[0, 5]} />
+                  <Tooltip />
+                  <Bar dataKey="rating" fill="#06b6d4" name="Avg. Rating" />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+        ) : (
+          <div className="bg-white rounded-lg shadow p-4 mb-6 text-center">
+            <h3 className="font-medium mb-2">Event Feedback Ratings</h3>
+            <p className="text-gray-500">No feedback data available</p>
           </div>
         )}
         

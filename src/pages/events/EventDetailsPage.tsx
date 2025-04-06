@@ -5,21 +5,26 @@ import { useEvents } from '@/contexts/EventContext';
 import { useAuth } from '@/contexts/AuthContext';
 import PageHeader from '@/components/common/PageHeader';
 import BottomNavigation from '@/components/common/BottomNavigation';
-import { Calendar, MapPin, Clock, Users, Tag, AlertCircle, Loader2 } from 'lucide-react';
+import { Calendar, MapPin, Clock, Users, Tag, AlertCircle, Loader2, MessageSquare } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { formatDate } from '@/lib/utils';
 import { useToast } from '@/hooks/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import FeedbackForm from '@/components/feedback/FeedbackForm';
+import FeedbackDisplay from '@/components/feedback/FeedbackDisplay';
 
 const EventDetailsPage = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
-  const { getEventById, registerForEvent, loadingEvents } = useEvents();
+  const { getEventById, registerForEvent, loadingEvents, getFeedbackByEvent, hasUserSubmittedFeedback } = useEvents();
   const { user, profile, isAuthenticated, userType } = useAuth();
   const { toast } = useToast();
   
   const [event, setEvent] = useState(null);
   const [registering, setRegistering] = useState(false);
   const [isRegistered, setIsRegistered] = useState(false);
+  const [showFeedbackForm, setShowFeedbackForm] = useState(false);
+  const [userHasSubmittedFeedback, setUserHasSubmittedFeedback] = useState(false);
 
   useEffect(() => {
     if (eventId && !loadingEvents) {
@@ -36,8 +41,13 @@ const EventDetailsPage = () => {
       // This would be a good place to check if user is already registered
       // For now, we'll use a placeholder and assume not registered
       setIsRegistered(false);
+      
+      // Check if user has submitted feedback for this event
+      if (eventId) {
+        setUserHasSubmittedFeedback(hasUserSubmittedFeedback(eventId, user.id));
+      }
     }
-  }, [event, user, userType]);
+  }, [event, user, userType, eventId, hasUserSubmittedFeedback]);
 
   const handleRegister = async () => {
     if (!isAuthenticated) {
@@ -106,6 +116,22 @@ const EventDetailsPage = () => {
     }
   };
 
+  // Function to check if event is in the past
+  const isPastEvent = (eventDate: string) => {
+    const today = new Date();
+    const date = new Date(eventDate);
+    return date < today;
+  };
+
+  const handleFeedbackSubmitted = () => {
+    setShowFeedbackForm(false);
+    setUserHasSubmittedFeedback(true);
+    toast({
+      title: "Feedback Submitted",
+      description: "Thank you for your feedback!",
+    });
+  };
+
   if (loadingEvents) {
     return (
       <div className="min-h-screen flex justify-center items-center">
@@ -132,6 +158,8 @@ const EventDetailsPage = () => {
   const isEventFull = event.currentAttendees >= event.maxAttendees;
   const isRegistrationClosed = new Date() > new Date(event.dueDate);
   const canRegister = !isRegistered && !isEventFull && !isRegistrationClosed;
+  const isEventPast = isPastEvent(event.date);
+  const eventFeedback = eventId ? getFeedbackByEvent(eventId) : [];
 
   return (
     <div className="min-h-screen pb-16 bg-gray-50">
@@ -188,36 +216,74 @@ const EventDetailsPage = () => {
           <p className="text-gray-700">{event.description}</p>
         </div>
         
-        {isRegistrationClosed ? (
+        {isEventPast && (
+          <div className="bg-white p-4 rounded-lg shadow mb-6">
+            <div className="flex justify-between items-center mb-3">
+              <h2 className="text-lg font-semibold">Feedback</h2>
+              
+              {isAuthenticated && userType === 'student' && !userHasSubmittedFeedback && (
+                <Dialog open={showFeedbackForm} onOpenChange={setShowFeedbackForm}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="sm" className="flex items-center gap-1">
+                      <MessageSquare className="h-4 w-4" />
+                      Add Feedback
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Share Your Feedback</DialogTitle>
+                    </DialogHeader>
+                    <FeedbackForm 
+                      eventId={event.id} 
+                      userId={user?.id} 
+                      onSuccess={handleFeedbackSubmitted} 
+                    />
+                  </DialogContent>
+                </Dialog>
+              )}
+            </div>
+            
+            <FeedbackDisplay feedback={eventFeedback} />
+          </div>
+        )}
+        
+        {isRegistrationClosed && !isEventPast ? (
           <div className="bg-red-50 p-3 rounded-lg text-center mb-4">
             <AlertCircle className="h-5 w-5 text-red-500 mx-auto mb-1" />
             <p className="text-red-700 text-sm">Registration closed on {formatDate(event.dueDate)}</p>
           </div>
-        ) : isEventFull ? (
+        ) : isEventFull && !isEventPast ? (
           <div className="bg-amber-50 p-3 rounded-lg text-center mb-4">
             <AlertCircle className="h-5 w-5 text-amber-500 mx-auto mb-1" />
             <p className="text-amber-700 text-sm">This event is fully booked</p>
           </div>
+        ) : isEventPast ? (
+          <div className="bg-gray-50 p-3 rounded-lg text-center mb-4">
+            <Clock className="h-5 w-5 text-gray-500 mx-auto mb-1" />
+            <p className="text-gray-700 text-sm">This event has already taken place</p>
+          </div>
         ) : null}
         
-        <div className="fixed bottom-20 left-4 right-4">
-          {isRegistered ? (
-            <Button 
-              className="w-full bg-green-500 text-white py-3 rounded-lg font-medium text-center"
-              disabled
-            >
-              Already Registered
-            </Button>
-          ) : (
-            <Button 
-              onClick={handleRegister}
-              className="w-full bg-collegeBlue-500 text-white py-3 rounded-lg font-medium text-center"
-              disabled={!canRegister || registering}
-            >
-              {registering ? 'Registering...' : `Register Now - ₹${event.price}`}
-            </Button>
-          )}
-        </div>
+        {!isEventPast && (
+          <div className="fixed bottom-20 left-4 right-4">
+            {isRegistered ? (
+              <Button 
+                className="w-full bg-green-500 text-white py-3 rounded-lg font-medium text-center"
+                disabled
+              >
+                Already Registered
+              </Button>
+            ) : (
+              <Button 
+                onClick={handleRegister}
+                className="w-full bg-collegeBlue-500 text-white py-3 rounded-lg font-medium text-center"
+                disabled={!canRegister || registering}
+              >
+                {registering ? 'Registering...' : `Register Now - ₹${event.price}`}
+              </Button>
+            )}
+          </div>
+        )}
       </div>
       
       <BottomNavigation />
