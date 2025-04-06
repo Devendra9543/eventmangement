@@ -16,7 +16,7 @@ interface CategoryCount {
 const ClubEventsPage = () => {
   const { clubId } = useParams();
   const navigate = useNavigate();
-  const { getEventsByClub, loadingEvents } = useEvents();
+  const { events, loadingEvents } = useEvents();
   const [categories, setCategories] = useState<CategoryCount[]>([]);
   
   // Get the actual club name based on the clubId
@@ -35,8 +35,8 @@ const ClubEventsPage = () => {
   
   useEffect(() => {
     if (!loadingEvents && clubId) {
-      // Get events for this club
-      const clubEvents = getEventsByClub(clubId as any);
+      // Filter events for this club
+      const clubEvents = events.filter(event => event.club === clubId);
       
       // Count events by category
       const categoryMap = new Map<string, number>();
@@ -56,7 +56,7 @@ const ClubEventsPage = () => {
       
       setCategories(categoryCountArray);
     }
-  }, [clubId, getEventsByClub, loadingEvents]);
+  }, [clubId, events, loadingEvents]);
   
   if (loadingEvents) {
     return (

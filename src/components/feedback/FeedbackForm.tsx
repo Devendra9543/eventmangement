@@ -1,132 +1,118 @@
 
-import React from 'react';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { Star } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
-import { Textarea } from '@/components/ui/textarea';
-import { useToast } from '@/hooks/use-toast';
-import { useEvents } from '@/contexts/EventContext';
-
-const feedbackSchema = z.object({
-  rating: z.number().min(1).max(5),
-  comment: z.string().optional(),
-});
-
-type FeedbackFormValues = z.infer<typeof feedbackSchema>;
+import React, { useState } from 'react';
+import { Star, StarHalf } from 'lucide-react';
+import { useEvents } from '../../contexts/EventContext';
+import { useAuth } from '../../contexts/AuthContext';
+import { Button } from '../ui/button';
+import { Textarea } from '../ui/textarea';
+import { toast } from '../../hooks/use-toast';
 
 interface FeedbackFormProps {
   eventId: string;
-  userId: string;
-  onSuccess?: () => void;
+  onSubmit: () => void;
 }
 
-const FeedbackForm: React.FC<FeedbackFormProps> = ({ eventId, userId, onSuccess }) => {
-  const { submitFeedback } = useEvents();
-  const { toast } = useToast();
-  const [selectedRating, setSelectedRating] = React.useState<number>(0);
-  
-  const form = useForm<FeedbackFormValues>({
-    resolver: zodResolver(feedbackSchema),
-    defaultValues: {
-      rating: 0,
-      comment: '',
-    },
-  });
+const FeedbackForm: React.FC<FeedbackFormProps> = ({ eventId, onSubmit }) => {
+  const [rating, setRating] = useState<number>(0);
+  const [comment, setComment] = useState<string>('');
+  const [submitting, setSubmitting] = useState<boolean>(false);
 
-  const onSubmit = async (values: FeedbackFormValues) => {
-    try {
-      const success = await submitFeedback(
-        eventId,
-        userId,
-        values.rating,
-        values.comment
-      );
-      
-      if (success && onSuccess) {
-        onSuccess();
-      }
-    } catch (error) {
-      console.error('Error submitting feedback:', error);
+  const { submitFeedback } = useEvents();
+  const { user } = useAuth();
+
+  const handleRatingClick = (value: number) => {
+    setRating(value);
+  };
+
+  const renderStars = () => {
+    return Array(5).fill(0).map((_, index) => (
+      <button
+        key={index}
+        type="button"
+        onClick={() => handleRatingClick(index + 1)}
+        className="focus:outline-none"
+      >
+        {index + 1 <= rating ? (
+          <Star className="w-8 h-8 text-amber-400 fill-amber-400" />
+        ) : (
+          <Star className="w-8 h-8 text-gray-300" />
+        )}
+      </button>
+    ));
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user) {
       toast({
-        title: 'Error',
-        description: 'Failed to submit feedback. Please try again.',
-        variant: 'destructive',
+        title: "Error",
+        description: "You must be logged in to submit feedback",
+        variant: "destructive"
       });
+      return;
+    }
+    
+    if (rating === 0) {
+      toast({
+        title: "Error",
+        description: "Please select a rating",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    setSubmitting(true);
+    
+    try {
+      await submitFeedback(eventId, rating, comment);
+      toast({
+        title: "Success",
+        description: "Your feedback has been submitted",
+        variant: "default"
+      });
+      onSubmit();
+    } catch (error) {
+      console.error("Error submitting feedback:", error);
+      toast({
+        title: "Error",
+        description: "Failed to submit feedback. Please try again.",
+        variant: "destructive"
+      });
+    } finally {
+      setSubmitting(false);
     }
   };
 
-  const handleStarClick = (rating: number) => {
-    setSelectedRating(rating);
-    form.setValue('rating', rating);
-  };
-
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="rating"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Rating</FormLabel>
-              <FormControl>
-                <div className="flex items-center space-x-1">
-                  {[1, 2, 3, 4, 5].map((rating) => (
-                    <button
-                      key={rating}
-                      type="button"
-                      onClick={() => handleStarClick(rating)}
-                      className="focus:outline-none"
-                    >
-                      <Star
-                        className={`h-6 w-6 ${
-                          rating <= selectedRating
-                            ? 'fill-yellow-400 text-yellow-400'
-                            : 'text-gray-300'
-                        }`}
-                      />
-                    </button>
-                  ))}
-                </div>
-              </FormControl>
-              <FormDescription>
-                Rate your experience from 1 to 5 stars
-              </FormDescription>
-              <FormMessage />
-            </FormItem>
-          )}
+    <form onSubmit={handleSubmit} className="space-y-4 bg-white rounded-lg p-4 shadow-sm border border-gray-100">
+      <h3 className="text-lg font-semibold text-gray-900 mb-3">Rate Your Experience</h3>
+      
+      <div className="flex space-x-1 justify-center">
+        {renderStars()}
+      </div>
+      
+      <div>
+        <label htmlFor="comment" className="block text-sm font-medium text-gray-700 mb-1">
+          Comments (Optional)
+        </label>
+        <Textarea
+          id="comment"
+          placeholder="Share your thoughts about the event..."
+          value={comment}
+          onChange={(e) => setComment(e.target.value)}
+          className="min-h-[100px]"
         />
-
-        <FormField
-          control={form.control}
-          name="comment"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Comments (Optional)</FormLabel>
-              <FormControl>
-                <Textarea
-                  placeholder="Share your thoughts about the event..."
-                  className="resize-none"
-                  {...field}
-                />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
-
-        <Button 
-          type="submit" 
-          className="w-full"
-          disabled={form.formState.isSubmitting || selectedRating === 0}
-        >
-          {form.formState.isSubmitting ? 'Submitting...' : 'Submit Feedback'}
-        </Button>
-      </form>
-    </Form>
+      </div>
+      
+      <Button 
+        type="submit" 
+        className="w-full gradient-bg hover:opacity-90 text-white"
+        disabled={submitting || rating === 0}
+      >
+        {submitting ? 'Submitting...' : 'Submit Feedback'}
+      </Button>
+    </form>
   );
 };
 

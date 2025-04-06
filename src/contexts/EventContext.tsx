@@ -1,6 +1,7 @@
+
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../integrations/supabase/client';
 import { useAuth } from './AuthContext';
 
 export interface Event {
@@ -17,6 +18,7 @@ export interface Event {
   maxAttendees: number;
   currentAttendees: number;
   organizerId: string;
+  dueDate?: string;
 }
 
 export interface Feedback {
@@ -26,6 +28,15 @@ export interface Feedback {
   rating: number;
   comment: string;
   createdAt: string;
+}
+
+export interface EventRegistration {
+  id: string;
+  eventId: string;
+  userId: string;
+  userName: string;
+  registrationDate: string;
+  paymentStatus: string;
 }
 
 interface EventContextType {
@@ -38,6 +49,9 @@ interface EventContextType {
   fetchFeedback: () => Promise<void>;
   getEventById: (id: string) => Event | undefined;
   getFeedbackByEvent: (eventId: string) => Feedback[];
+  getEventsByClub: (clubId: string) => Event[];
+  getRegistrationsByEvent: (eventId: string) => Promise<EventRegistration[]>;
+  hasUserSubmittedFeedback: (eventId: string, userId: string) => boolean;
   createEvent: (event: Omit<Event, 'id' | 'currentAttendees'>) => Promise<void>;
   updateEvent: (id: string, updates: Partial<Omit<Event, 'id' | 'organizerId'>>) => Promise<void>;
   deleteEvent: (id: string) => Promise<void>;
@@ -76,7 +90,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         setEvents(data as Event[]);
         // Extract clubs from events
         const clubsSet = new Set(data.map(event => event.club));
-        setClubs(Array.from(clubsSet));
+        setClubs(Array.from(clubsSet) as string[]);
       }
     } finally {
       setLoadingEvents(false);
@@ -87,7 +101,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setLoadingFeedback(true);
     try {
       const { data, error } = await supabase
-        .from('event_feedback')
+        .from('event_feedback' as any)
         .select('*');
 
       if (error) {
@@ -118,6 +132,43 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return feedback.filter(item => item.eventId === eventId);
   };
 
+  const getEventsByClub = (clubId: string): Event[] => {
+    return events.filter(event => event.club === clubId);
+  };
+
+  const getRegistrationsByEvent = async (eventId: string): Promise<EventRegistration[]> => {
+    try {
+      const { data, error } = await supabase
+        .from('registrations')
+        .select('*')
+        .eq('event_id', eventId);
+
+      if (error) {
+        console.error("Error fetching registrations:", error);
+        return [];
+      }
+
+      if (data) {
+        return data.map((item: any) => ({
+          id: item.id,
+          eventId: item.event_id,
+          userId: item.user_id,
+          userName: item.user_name,
+          registrationDate: item.registration_date,
+          paymentStatus: item.payment_status
+        }));
+      }
+      return [];
+    } catch (error) {
+      console.error("Unexpected error fetching registrations:", error);
+      return [];
+    }
+  };
+
+  const hasUserSubmittedFeedback = (eventId: string, userId: string): boolean => {
+    return feedback.some(item => item.eventId === eventId && item.userId === userId);
+  };
+
   const createEvent = async (event: Omit<Event, 'id' | 'currentAttendees'>) => {
     try {
       const { error } = await supabase
@@ -126,7 +177,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           {
             id: uuidv4(),
             ...event,
-            currentAttendees: 0
+            current_attendees: 0
           }
         ]);
 
@@ -142,9 +193,24 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateEvent = async (id: string, updates: Partial<Omit<Event, 'id' | 'organizerId'>>) => {
     try {
+      // Convert camelCase keys to snake_case for Supabase
+      const formattedUpdates: any = { ...updates };
+      if (updates.maxAttendees !== undefined) {
+        formattedUpdates.max_attendees = updates.maxAttendees;
+        delete formattedUpdates.maxAttendees;
+      }
+      if (updates.dueDate !== undefined) {
+        formattedUpdates.due_date = updates.dueDate;
+        delete formattedUpdates.dueDate;
+      }
+      if (updates.imageUrl !== undefined) {
+        formattedUpdates.image_url = updates.imageUrl;
+        delete formattedUpdates.imageUrl;
+      }
+      
       const { error } = await supabase
         .from('events')
-        .update(updates)
+        .update(formattedUpdates)
         .eq('id', id);
 
       if (error) {
@@ -190,7 +256,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       const { data: eventData, error: eventError } = await supabase
         .from('events')
-        .select('maxAttendees, currentAttendees')
+        .select('max_attendees, current_attendees')
         .eq('id', eventId)
         .single();
 
@@ -201,7 +267,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return;
       }
 
-      if (eventData && eventData.currentAttendees >= eventData.maxAttendees) {
+      if (eventData && eventData.current_attendees >= eventData.max_attendees) {
         console.log("Event is full. Registration cannot be completed.");
         // Revert the optimistic update
         fetchEvents();
@@ -275,7 +341,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const userId = user.id;
 
     try {
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('event_feedback' as any)
         .insert({
           event_id: eventId,
@@ -305,6 +371,9 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     fetchFeedback,
     getEventById,
     getFeedbackByEvent,
+    getEventsByClub,
+    getRegistrationsByEvent,
+    hasUserSubmittedFeedback,
     createEvent,
     updateEvent,
     deleteEvent,
