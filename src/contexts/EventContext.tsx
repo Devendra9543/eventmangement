@@ -41,7 +41,7 @@ interface EventContextType {
   fetchFeedback: () => Promise<void>;
   getEventById: (id: string) => Event | undefined;
   getEventsByClub: (clubId: string) => Event[]; // Added getEventsByClub method
-  getRegistrationsByEvent: (eventId: string) => any[]; // Added getRegistrationsByEvent method
+  getRegistrationsByEvent: (eventId: string) => Promise<any[]>; // Changed return type to Promise<any[]>
   getFeedbackByEvent: (eventId: string) => Feedback[];
   hasUserSubmittedFeedback: (eventId: string, userId: string) => boolean; // Added hasUserSubmittedFeedback method
   createEvent: (event: Omit<Event, 'id' | 'currentAttendees'>) => Promise<void>;
@@ -156,7 +156,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return feedback.some(item => item.eventId === eventId && item.userId === userId);
   };
 
-  const getRegistrationsByEvent = async (eventId: string) => {
+  const getRegistrationsByEvent = async (eventId: string): Promise<any[]> => {
     try {
       const { data, error } = await supabase
         .from('registrations')
@@ -295,13 +295,29 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return false;
       }
 
+      // Get the username from the profile
+      const { data: profileData, error: profileError } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('id', user.id)
+        .single();
+        
+      if (profileError) {
+        console.error("Error fetching profile:", profileError);
+        fetchEvents();
+        return false;
+      }
+      
+      const userName = profileData?.full_name || 'Anonymous User';
+
       const { error } = await supabase
         .from('registrations')
-        .insert([{
+        .insert({
           event_id: eventId,
           user_id: user.id,
+          user_name: userName,
           registration_date: new Date().toISOString()
-        }]);
+        });
 
       if (error) {
         console.error("Error registering for event:", error);
