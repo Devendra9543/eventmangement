@@ -39,10 +39,23 @@ export interface EventRegistration {
   paymentStatus: string;
 }
 
+// Add categories array to context
+const EVENT_CATEGORIES = [
+  'Workshop',
+  'Competition',
+  'Conference',
+  'Seminar',
+  'Cultural',
+  'Technical',
+  'Sports',
+  'Other'
+];
+
 interface EventContextType {
   events: Event[];
   clubs: string[];
   feedback: Feedback[];
+  categories: string[]; // Add this property
   loadingEvents: boolean;
   loadingFeedback: boolean;
   fetchEvents: () => Promise<void>;
@@ -87,7 +100,25 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
 
       if (data) {
-        setEvents(data as Event[]);
+        // Map the database fields to our interface fields
+        const mappedEvents: Event[] = data.map(event => ({
+          id: event.id,
+          title: event.title,
+          description: event.description,
+          date: event.date,
+          time: event.time,
+          location: event.location,
+          imageUrl: event.image_url || '',
+          price: event.price,
+          category: event.category,
+          club: event.club,
+          maxAttendees: event.max_attendees,
+          currentAttendees: event.current_attendees,
+          organizerId: event.organizer_id,
+          dueDate: event.due_date
+        }));
+        
+        setEvents(mappedEvents);
         // Extract clubs from events
         const clubsSet = new Set(data.map(event => event.club));
         setClubs(Array.from(clubsSet) as string[]);
@@ -171,15 +202,29 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const createEvent = async (event: Omit<Event, 'id' | 'currentAttendees'>) => {
     try {
+      // Convert from interface fields to DB fields
+      const dbEvent = {
+        title: event.title,
+        description: event.description,
+        date: event.date,
+        time: event.time,
+        location: event.location,
+        image_url: event.imageUrl,
+        price: event.price,
+        category: event.category,
+        club: event.club,
+        max_attendees: event.maxAttendees,
+        organizer_id: event.organizerId,
+        due_date: event.dueDate,
+        current_attendees: 0
+      };
+      
       const { error } = await supabase
         .from('events')
-        .insert([
-          {
-            id: uuidv4(),
-            ...event,
-            current_attendees: 0
-          }
-        ]);
+        .insert([{
+          id: uuidv4(),
+          ...dbEvent
+        }]);
 
       if (error) {
         console.error("Error creating event:", error);
@@ -193,24 +238,24 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateEvent = async (id: string, updates: Partial<Omit<Event, 'id' | 'organizerId'>>) => {
     try {
-      // Convert camelCase keys to snake_case for Supabase
-      const formattedUpdates: any = { ...updates };
-      if (updates.maxAttendees !== undefined) {
-        formattedUpdates.max_attendees = updates.maxAttendees;
-        delete formattedUpdates.maxAttendees;
-      }
-      if (updates.dueDate !== undefined) {
-        formattedUpdates.due_date = updates.dueDate;
-        delete formattedUpdates.dueDate;
-      }
-      if (updates.imageUrl !== undefined) {
-        formattedUpdates.image_url = updates.imageUrl;
-        delete formattedUpdates.imageUrl;
-      }
+      // Convert from interface fields to DB fields
+      const dbUpdates: any = {};
+      
+      if (updates.title !== undefined) dbUpdates.title = updates.title;
+      if (updates.description !== undefined) dbUpdates.description = updates.description;
+      if (updates.date !== undefined) dbUpdates.date = updates.date;
+      if (updates.time !== undefined) dbUpdates.time = updates.time;
+      if (updates.location !== undefined) dbUpdates.location = updates.location;
+      if (updates.imageUrl !== undefined) dbUpdates.image_url = updates.imageUrl;
+      if (updates.price !== undefined) dbUpdates.price = updates.price;
+      if (updates.category !== undefined) dbUpdates.category = updates.category;
+      if (updates.club !== undefined) dbUpdates.club = updates.club;
+      if (updates.maxAttendees !== undefined) dbUpdates.max_attendees = updates.maxAttendees;
+      if (updates.dueDate !== undefined) dbUpdates.due_date = updates.dueDate;
       
       const { error } = await supabase
         .from('events')
-        .update(formattedUpdates)
+        .update(dbUpdates)
         .eq('id', id);
 
       if (error) {
@@ -274,12 +319,15 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         return;
       }
 
+      // Use 'registrations' table instead of 'event_registrations'
       const { error } = await supabase
-        .from('event_registrations')
+        .from('registrations')
         .insert([{
           event_id: eventId,
           user_id: user.id,
-          registered_at: new Date().toISOString()
+          registration_date: new Date().toISOString(),
+          user_name: 'Unknown User', // Add required field
+          payment_status: 'pending'  // Add required field
         }]);
 
       if (error) {
@@ -311,8 +359,9 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         )
       );
 
+      // Use 'registrations' table instead of 'event_registrations'
       const { error } = await supabase
-        .from('event_registrations')
+        .from('registrations')
         .delete()
         .eq('event_id', eventId)
         .eq('user_id', user.id);
@@ -365,6 +414,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     events,
     clubs,
     feedback,
+    categories: EVENT_CATEGORIES, // Add categories to context
     loadingEvents,
     loadingFeedback,
     fetchEvents,

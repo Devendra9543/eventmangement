@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -182,7 +181,7 @@ const EditEventPage = () => {
     setIsLoading(true);
     
     try {
-      const success = await updateEvent(eventId, {
+      await updateEvent(eventId, {
         title: formData.title,
         description: formData.description,
         date: formData.date,
@@ -195,19 +194,11 @@ const EditEventPage = () => {
         dueDate: formData.dueDate, 
       });
       
-      if (success) {
-        toast({
-          title: 'Success',
-          description: 'Event updated successfully',
-        });
-        navigate('/manage-events');
-      } else {
-        toast({
-          title: 'Error',
-          description: 'Failed to update event',
-          variant: 'destructive',
-        });
-      }
+      toast({
+        title: 'Success',
+        description: 'Event updated successfully',
+      });
+      navigate('/manage-events');
     } catch (error) {
       toast({
         title: 'Error',

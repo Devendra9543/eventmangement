@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Star, StarHalf } from 'lucide-react';
+import { Star } from 'lucide-react';
 import { useEvents } from '../../contexts/EventContext';
 import { useAuth } from '../../contexts/AuthContext';
 import { Button } from '../ui/button';
@@ -9,10 +9,10 @@ import { toast } from '../../hooks/use-toast';
 
 interface FeedbackFormProps {
   eventId: string;
-  onSubmit: () => void;
+  onSuccess: () => void;
 }
 
-const FeedbackForm: React.FC<FeedbackFormProps> = ({ eventId, onSubmit }) => {
+const FeedbackForm: React.FC<FeedbackFormProps> = ({ eventId, onSuccess }) => {
   const [rating, setRating] = useState<number>(0);
   const [comment, setComment] = useState<string>('');
   const [submitting, setSubmitting] = useState<boolean>(false);
@@ -71,7 +71,7 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ eventId, onSubmit }) => {
         description: "Your feedback has been submitted",
         variant: "default"
       });
-      onSubmit();
+      onSuccess();
     } catch (error) {
       console.error("Error submitting feedback:", error);
       toast({
