@@ -33,7 +33,7 @@ const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({
                   key={star}
                   className={`h-5 w-5 ${
                     star <= Math.round(averageRating)
-                      ? 'fill-yellow-400 text-yellow-400'
+                      ? 'fill-accent text-accent'
                       : 'text-gray-300'
                   }`}
                 />
@@ -46,7 +46,7 @@ const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({
 
           <div className="space-y-4">
             {feedback.map((item) => (
-              <div key={item.id} className="bg-white p-3 rounded-lg shadow">
+              <div key={item.id} className="bg-white p-3 rounded-lg shadow-sm border border-gray-100 card-hover">
                 <div className="flex justify-between items-center mb-2">
                   <div className="flex items-center">
                     {[1, 2, 3, 4, 5].map((star) => (
@@ -54,7 +54,7 @@ const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({
                         key={star}
                         className={`h-4 w-4 ${
                           star <= item.rating
-                            ? 'fill-yellow-400 text-yellow-400'
+                            ? 'fill-accent text-accent'
                             : 'text-gray-300'
                         }`}
                       />
@@ -73,7 +73,7 @@ const FeedbackDisplay: React.FC<FeedbackDisplayProps> = ({
           </div>
         </>
       ) : (
-        <div className="text-center py-4">
+        <div className="text-center py-6 bg-gray-50 rounded-lg border border-gray-100">
           <p className="text-gray-500">No feedback yet</p>
         </div>
       )}

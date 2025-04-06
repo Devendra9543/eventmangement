@@ -35,7 +35,7 @@ const EventCard = ({ event, isCompact = false }: EventCardProps) => {
 
   return (
     <div 
-      className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100 cursor-pointer hover:shadow-lg transition-shadow"
+      className="bg-white rounded-lg shadow-md overflow-hidden border border-gray-100 cursor-pointer card-hover"
       onClick={handleClick}
     >
       {event.imageUrl && (
@@ -50,35 +50,35 @@ const EventCard = ({ event, isCompact = false }: EventCardProps) => {
       <div className="p-4">
         <div className="flex justify-between items-start">
           <h3 className="font-semibold text-lg text-gray-900">{event.title}</h3>
-          <span className="text-collegeTeal-500 font-semibold">₹{event.price}</span>
+          <span className="text-accent font-semibold">₹{event.price}</span>
         </div>
         <p className="text-sm text-gray-600 mt-1 line-clamp-2">{event.description}</p>
         
         <div className="mt-3 space-y-1">
           <div className="flex items-center text-sm text-gray-500">
-            <Calendar size={16} className="mr-2" />
+            <Calendar size={16} className="mr-2 text-primary" />
             {new Date(event.date).toLocaleDateString()} at {event.time}
           </div>
           <div className="flex items-center text-sm text-gray-500">
-            <MapPin size={16} className="mr-2" />
+            <MapPin size={16} className="mr-2 text-primary" />
             {event.location}
           </div>
           <div className="flex items-center text-sm text-gray-500">
-            <Users size={16} className="mr-2" />
+            <Users size={16} className="mr-2 text-primary" />
             {event.currentAttendees}/{event.maxAttendees} Registered
           </div>
         </div>
         
         <div className="mt-3 flex justify-between items-center">
-          <span className="text-xs px-2 py-1 bg-gray-100 rounded-full text-gray-700">
+          <span className="text-xs px-2 py-1 bg-primary/10 rounded-full text-primary font-medium">
             {event.club} • {event.category}
           </span>
           {event.currentAttendees >= event.maxAttendees ? (
-            <span className="text-xs px-3 py-1 bg-red-100 text-red-800 rounded-full">
+            <span className="text-xs px-3 py-1 bg-red-100 text-red-800 rounded-full font-medium">
               Full
             </span>
           ) : (
-            <span className="text-xs px-3 py-1 bg-green-100 text-green-800 rounded-full">
+            <span className="text-xs px-3 py-1 bg-green-100 text-green-800 rounded-full font-medium">
               Available
             </span>
           )}

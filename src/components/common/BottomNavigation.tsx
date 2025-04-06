@@ -26,19 +26,19 @@ const BottomNavigation = () => {
   const navItems = userType === 'student' ? studentNavItems : organizerNavItems;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center h-16 z-10">
+    <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around items-center h-16 z-10 shadow-[0_-2px_10px_rgba(0,0,0,0.05)]">
       {navItems.map((item) => (
         <button
           key={item.path}
-          className={`flex flex-col items-center justify-center w-full h-full ${
+          className={`flex flex-col items-center justify-center w-full h-full transition-colors ${
             isActive(item.path)
-              ? 'text-collegeBlue-500'
-              : 'text-gray-500'
+              ? 'text-primary'
+              : 'text-gray-500 hover:text-primary/70'
           }`}
           onClick={() => navigate(item.path)}
         >
           <item.icon size={24} />
-          <span className="text-xs mt-1">{item.name}</span>
+          <span className="text-xs mt-1 font-medium">{item.name}</span>
         </button>
       ))}
     </div>
