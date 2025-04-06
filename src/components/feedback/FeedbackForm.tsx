@@ -38,11 +38,11 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ eventId, userId, onSuccess 
 
   const onSubmit = async (values: FeedbackFormValues) => {
     try {
+      // Fixed submitFeedback call to match the updated method signature
       const success = await submitFeedback(
         eventId,
-        userId,
         values.rating,
-        values.comment
+        values.comment || ''
       );
       
       if (success && onSuccess) {
