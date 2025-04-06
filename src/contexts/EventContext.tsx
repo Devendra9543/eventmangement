@@ -1,4 +1,3 @@
-
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '../integrations/supabase/client';
@@ -39,7 +38,6 @@ export interface EventRegistration {
   paymentStatus: string;
 }
 
-// Add categories array to context
 const EVENT_CATEGORIES = [
   'Workshop',
   'Competition',
@@ -55,7 +53,7 @@ interface EventContextType {
   events: Event[];
   clubs: string[];
   feedback: Feedback[];
-  categories: string[]; // Add this property
+  categories: string[];
   loadingEvents: boolean;
   loadingFeedback: boolean;
   fetchEvents: () => Promise<void>;
@@ -100,7 +98,6 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
 
       if (data) {
-        // Map the database fields to our interface fields
         const mappedEvents: Event[] = data.map(event => ({
           id: event.id,
           title: event.title,
@@ -119,7 +116,6 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         }));
         
         setEvents(mappedEvents);
-        // Extract clubs from events
         const clubsSet = new Set(data.map(event => event.club));
         setClubs(Array.from(clubsSet) as string[]);
       }
@@ -202,7 +198,6 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const createEvent = async (event: Omit<Event, 'id' | 'currentAttendees'>) => {
     try {
-      // Convert from interface fields to DB fields
       const dbEvent = {
         title: event.title,
         description: event.description,
@@ -229,7 +224,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (error) {
         console.error("Error creating event:", error);
       } else {
-        fetchEvents(); // Refresh events after creating a new one
+        fetchEvents();
       }
     } catch (error) {
       console.error("Unexpected error creating event:", error);
@@ -238,7 +233,6 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateEvent = async (id: string, updates: Partial<Omit<Event, 'id' | 'organizerId'>>) => {
     try {
-      // Convert from interface fields to DB fields
       const dbUpdates: any = {};
       
       if (updates.title !== undefined) dbUpdates.title = updates.title;
@@ -261,7 +255,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (error) {
         console.error("Error updating event:", error);
       } else {
-        fetchEvents(); // Refresh events after updating
+        fetchEvents();
       }
     } catch (error) {
       console.error("Unexpected error updating event:", error);
@@ -278,7 +272,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (error) {
         console.error("Error deleting event:", error);
       } else {
-        fetchEvents(); // Refresh events after deleting
+        fetchEvents();
       }
     } catch (error) {
       console.error("Unexpected error deleting event:", error);
@@ -292,7 +286,6 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     try {
-      // Optimistically update the local state
       setEvents(currentEvents =>
         currentEvents.map(event =>
           event.id === eventId ? { ...event, currentAttendees: event.currentAttendees + 1 } : event
@@ -307,32 +300,28 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (eventError) {
         console.error("Error fetching event details:", eventError);
-        // Revert the optimistic update
         fetchEvents();
         return;
       }
 
       if (eventData && eventData.current_attendees >= eventData.max_attendees) {
         console.log("Event is full. Registration cannot be completed.");
-        // Revert the optimistic update
         fetchEvents();
         return;
       }
 
-      // Use 'registrations' table instead of 'event_registrations'
       const { error } = await supabase
         .from('registrations')
         .insert([{
           event_id: eventId,
           user_id: user.id,
           registration_date: new Date().toISOString(),
-          user_name: 'Unknown User', // Add required field
-          payment_status: 'pending'  // Add required field
+          user_name: 'Unknown User',
+          payment_status: 'pending'
         }]);
 
       if (error) {
         console.error("Error registering for event:", error);
-        // Revert the optimistic update
         fetchEvents();
       } else {
         console.log("Successfully registered for event.");
@@ -340,7 +329,6 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     } catch (error) {
       console.error("Unexpected error registering for event:", error);
-      // Revert the optimistic update
       fetchEvents();
     }
   };
@@ -352,14 +340,12 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     try {
-      // Optimistically update the local state
       setEvents(currentEvents =>
         currentEvents.map(event =>
           event.id === eventId ? { ...event, currentAttendees: event.currentAttendees - 1 } : event
         )
       );
 
-      // Use 'registrations' table instead of 'event_registrations'
       const { error } = await supabase
         .from('registrations')
         .delete()
@@ -368,7 +354,6 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       if (error) {
         console.error("Error cancelling registration:", error);
-        // Revert the optimistic update
         fetchEvents();
       } else {
         console.log("Successfully cancelled registration.");
@@ -376,7 +361,6 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     } catch (error) {
       console.error("Unexpected error cancelling registration:", error);
-      // Revert the optimistic update
       fetchEvents();
     }
   };
@@ -403,7 +387,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         console.error("Error submitting feedback:", error);
       } else {
         console.log("Feedback submitted successfully.");
-        fetchFeedback(); // Refresh feedback after submitting
+        fetchFeedback();
       }
     } catch (error) {
       console.error("Unexpected error submitting feedback:", error);
@@ -414,7 +398,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     events,
     clubs,
     feedback,
-    categories: EVENT_CATEGORIES, // Add categories to context
+    categories: EVENT_CATEGORIES,
     loadingEvents,
     loadingFeedback,
     fetchEvents,
