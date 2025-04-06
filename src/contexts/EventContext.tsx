@@ -1,6 +1,7 @@
+
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { supabase } from '../lib/supabaseClient';
+import { supabase } from '../integrations/supabase/client';
 import { useAuth } from './AuthContext';
 
 export interface Event {
