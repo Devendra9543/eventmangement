@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEvents } from '@/contexts/EventContext';
@@ -34,10 +35,14 @@ const EventDetailsPage = () => {
     }
   }, [eventId, getEventById, loadingEvents]);
 
+  // Check if student is registered for this event
   useEffect(() => {
     if (event && user && userType === 'student') {
+      // This would be a good place to check if user is already registered
+      // For now, we'll use a placeholder and assume not registered
       setIsRegistered(false);
       
+      // Check if user has submitted feedback for this event
       if (eventId) {
         setUserHasSubmittedFeedback(hasUserSubmittedFeedback(eventId, user.id));
       }
@@ -75,26 +80,35 @@ const EventDetailsPage = () => {
 
     try {
       setRegistering(true);
-      await registerForEvent(event.id);
-      setIsRegistered(true);
-      toast({
-        title: "Registration Successful",
-        description: `You are now registered for ${event.title}`,
-      });
-      
-      if (event.price > 0) {
+      const success = await registerForEvent(
+        event.id,
+        user.id,
+        profile.full_name
+      );
+
+      if (success) {
+        setIsRegistered(true);
         toast({
-          title: "Payment Required",
-          description: `Redirecting to payment page for ₹${event.price}`,
+          title: "Registration Successful",
+          description: `You are now registered for ${event.title}`,
         });
         
-        navigate(`/payment/${event.id}`);
+        // If the event has a price > 0, redirect to payment page
+        if (event.price > 0) {
+          toast({
+            title: "Payment Required",
+            description: `Redirecting to payment page for ₹${event.price}`,
+          });
+          
+          // Redirect to payment page with event ID
+          navigate(`/payment/${event.id}`);
+        }
       }
     } catch (error) {
       console.error("Registration error:", error);
       toast({
         title: "Registration Failed",
-        description: "Failed to register for event",
+        description: error.message || "Failed to register for event",
         variant: "destructive",
       });
     } finally {
@@ -102,6 +116,7 @@ const EventDetailsPage = () => {
     }
   };
 
+  // Function to check if event is in the past
   const isPastEvent = (eventDate: string) => {
     const today = new Date();
     const date = new Date(eventDate);
@@ -220,6 +235,7 @@ const EventDetailsPage = () => {
                     </DialogHeader>
                     <FeedbackForm 
                       eventId={event.id} 
+                      userId={user?.id} 
                       onSuccess={handleFeedbackSubmitted} 
                     />
                   </DialogContent>

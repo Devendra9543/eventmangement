@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import { v4 as uuidv4 } from 'uuid';
-import { supabase } from '../integrations/supabase/client';
+import { supabase } from '../lib/supabaseClient';
 import { useAuth } from './AuthContext';
 
 export interface Event {
@@ -17,7 +17,6 @@ export interface Event {
   maxAttendees: number;
   currentAttendees: number;
   organizerId: string;
-  dueDate?: string;
 }
 
 export interface Feedback {
@@ -29,40 +28,16 @@ export interface Feedback {
   createdAt: string;
 }
 
-export interface EventRegistration {
-  id: string;
-  eventId: string;
-  userId: string;
-  userName: string;
-  registrationDate: string;
-  paymentStatus: string;
-}
-
-const EVENT_CATEGORIES = [
-  'Workshop',
-  'Competition',
-  'Conference',
-  'Seminar',
-  'Cultural',
-  'Technical',
-  'Sports',
-  'Other'
-];
-
 interface EventContextType {
   events: Event[];
   clubs: string[];
   feedback: Feedback[];
-  categories: string[];
   loadingEvents: boolean;
   loadingFeedback: boolean;
   fetchEvents: () => Promise<void>;
   fetchFeedback: () => Promise<void>;
   getEventById: (id: string) => Event | undefined;
   getFeedbackByEvent: (eventId: string) => Feedback[];
-  getEventsByClub: (clubId: string) => Event[];
-  getRegistrationsByEvent: (eventId: string) => Promise<EventRegistration[]>;
-  hasUserSubmittedFeedback: (eventId: string, userId: string) => boolean;
   createEvent: (event: Omit<Event, 'id' | 'currentAttendees'>) => Promise<void>;
   updateEvent: (id: string, updates: Partial<Omit<Event, 'id' | 'organizerId'>>) => Promise<void>;
   deleteEvent: (id: string) => Promise<void>;
@@ -98,26 +73,10 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
 
       if (data) {
-        const mappedEvents: Event[] = data.map(event => ({
-          id: event.id,
-          title: event.title,
-          description: event.description,
-          date: event.date,
-          time: event.time,
-          location: event.location,
-          imageUrl: event.image_url || '',
-          price: event.price,
-          category: event.category,
-          club: event.club,
-          maxAttendees: event.max_attendees,
-          currentAttendees: event.current_attendees,
-          organizerId: event.organizer_id,
-          dueDate: event.due_date
-        }));
-        
-        setEvents(mappedEvents);
+        setEvents(data as Event[]);
+        // Extract clubs from events
         const clubsSet = new Set(data.map(event => event.club));
-        setClubs(Array.from(clubsSet) as string[]);
+        setClubs(Array.from(clubsSet));
       }
     } finally {
       setLoadingEvents(false);
@@ -128,7 +87,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setLoadingFeedback(true);
     try {
       const { data, error } = await supabase
-        .from('event_feedback' as any)
+        .from('event_feedback')
         .select('*');
 
       if (error) {
@@ -159,72 +118,22 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return feedback.filter(item => item.eventId === eventId);
   };
 
-  const getEventsByClub = (clubId: string): Event[] => {
-    return events.filter(event => event.club === clubId);
-  };
-
-  const getRegistrationsByEvent = async (eventId: string): Promise<EventRegistration[]> => {
-    try {
-      const { data, error } = await supabase
-        .from('registrations')
-        .select('*')
-        .eq('event_id', eventId);
-
-      if (error) {
-        console.error("Error fetching registrations:", error);
-        return [];
-      }
-
-      if (data) {
-        return data.map((item: any) => ({
-          id: item.id,
-          eventId: item.event_id,
-          userId: item.user_id,
-          userName: item.user_name,
-          registrationDate: item.registration_date,
-          paymentStatus: item.payment_status
-        }));
-      }
-      return [];
-    } catch (error) {
-      console.error("Unexpected error fetching registrations:", error);
-      return [];
-    }
-  };
-
-  const hasUserSubmittedFeedback = (eventId: string, userId: string): boolean => {
-    return feedback.some(item => item.eventId === eventId && item.userId === userId);
-  };
-
   const createEvent = async (event: Omit<Event, 'id' | 'currentAttendees'>) => {
     try {
-      const dbEvent = {
-        title: event.title,
-        description: event.description,
-        date: event.date,
-        time: event.time,
-        location: event.location,
-        image_url: event.imageUrl,
-        price: event.price,
-        category: event.category,
-        club: event.club,
-        max_attendees: event.maxAttendees,
-        organizer_id: event.organizerId,
-        due_date: event.dueDate,
-        current_attendees: 0
-      };
-      
       const { error } = await supabase
         .from('events')
-        .insert([{
-          id: uuidv4(),
-          ...dbEvent
-        }]);
+        .insert([
+          {
+            id: uuidv4(),
+            ...event,
+            currentAttendees: 0
+          }
+        ]);
 
       if (error) {
         console.error("Error creating event:", error);
       } else {
-        fetchEvents();
+        fetchEvents(); // Refresh events after creating a new one
       }
     } catch (error) {
       console.error("Unexpected error creating event:", error);
@@ -233,29 +142,15 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateEvent = async (id: string, updates: Partial<Omit<Event, 'id' | 'organizerId'>>) => {
     try {
-      const dbUpdates: any = {};
-      
-      if (updates.title !== undefined) dbUpdates.title = updates.title;
-      if (updates.description !== undefined) dbUpdates.description = updates.description;
-      if (updates.date !== undefined) dbUpdates.date = updates.date;
-      if (updates.time !== undefined) dbUpdates.time = updates.time;
-      if (updates.location !== undefined) dbUpdates.location = updates.location;
-      if (updates.imageUrl !== undefined) dbUpdates.image_url = updates.imageUrl;
-      if (updates.price !== undefined) dbUpdates.price = updates.price;
-      if (updates.category !== undefined) dbUpdates.category = updates.category;
-      if (updates.club !== undefined) dbUpdates.club = updates.club;
-      if (updates.maxAttendees !== undefined) dbUpdates.max_attendees = updates.maxAttendees;
-      if (updates.dueDate !== undefined) dbUpdates.due_date = updates.dueDate;
-      
       const { error } = await supabase
         .from('events')
-        .update(dbUpdates)
+        .update(updates)
         .eq('id', id);
 
       if (error) {
         console.error("Error updating event:", error);
       } else {
-        fetchEvents();
+        fetchEvents(); // Refresh events after updating
       }
     } catch (error) {
       console.error("Unexpected error updating event:", error);
@@ -272,7 +167,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       if (error) {
         console.error("Error deleting event:", error);
       } else {
-        fetchEvents();
+        fetchEvents(); // Refresh events after deleting
       }
     } catch (error) {
       console.error("Unexpected error deleting event:", error);
@@ -286,6 +181,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     try {
+      // Optimistically update the local state
       setEvents(currentEvents =>
         currentEvents.map(event =>
           event.id === eventId ? { ...event, currentAttendees: event.currentAttendees + 1 } : event
@@ -294,34 +190,35 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
       const { data: eventData, error: eventError } = await supabase
         .from('events')
-        .select('max_attendees, current_attendees')
+        .select('maxAttendees, currentAttendees')
         .eq('id', eventId)
         .single();
 
       if (eventError) {
         console.error("Error fetching event details:", eventError);
+        // Revert the optimistic update
         fetchEvents();
         return;
       }
 
-      if (eventData && eventData.current_attendees >= eventData.max_attendees) {
+      if (eventData && eventData.currentAttendees >= eventData.maxAttendees) {
         console.log("Event is full. Registration cannot be completed.");
+        // Revert the optimistic update
         fetchEvents();
         return;
       }
 
       const { error } = await supabase
-        .from('registrations')
+        .from('event_registrations')
         .insert([{
           event_id: eventId,
           user_id: user.id,
-          registration_date: new Date().toISOString(),
-          user_name: 'Unknown User',
-          payment_status: 'pending'
+          registered_at: new Date().toISOString()
         }]);
 
       if (error) {
         console.error("Error registering for event:", error);
+        // Revert the optimistic update
         fetchEvents();
       } else {
         console.log("Successfully registered for event.");
@@ -329,6 +226,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     } catch (error) {
       console.error("Unexpected error registering for event:", error);
+      // Revert the optimistic update
       fetchEvents();
     }
   };
@@ -340,6 +238,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     try {
+      // Optimistically update the local state
       setEvents(currentEvents =>
         currentEvents.map(event =>
           event.id === eventId ? { ...event, currentAttendees: event.currentAttendees - 1 } : event
@@ -347,13 +246,14 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       );
 
       const { error } = await supabase
-        .from('registrations')
+        .from('event_registrations')
         .delete()
         .eq('event_id', eventId)
         .eq('user_id', user.id);
 
       if (error) {
         console.error("Error cancelling registration:", error);
+        // Revert the optimistic update
         fetchEvents();
       } else {
         console.log("Successfully cancelled registration.");
@@ -361,6 +261,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       }
     } catch (error) {
       console.error("Unexpected error cancelling registration:", error);
+      // Revert the optimistic update
       fetchEvents();
     }
   };
@@ -374,7 +275,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     const userId = user.id;
 
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('event_feedback' as any)
         .insert({
           event_id: eventId,
@@ -387,7 +288,7 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         console.error("Error submitting feedback:", error);
       } else {
         console.log("Feedback submitted successfully.");
-        fetchFeedback();
+        fetchFeedback(); // Refresh feedback after submitting
       }
     } catch (error) {
       console.error("Unexpected error submitting feedback:", error);
@@ -398,16 +299,12 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     events,
     clubs,
     feedback,
-    categories: EVENT_CATEGORIES,
     loadingEvents,
     loadingFeedback,
     fetchEvents,
     fetchFeedback,
     getEventById,
     getFeedbackByEvent,
-    getEventsByClub,
-    getRegistrationsByEvent,
-    hasUserSubmittedFeedback,
     createEvent,
     updateEvent,
     deleteEvent,
