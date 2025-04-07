@@ -6,8 +6,9 @@ const config: CapacitorConfig = {
   appName: 'student-organizer-connect',
   webDir: 'dist',
   server: {
-    url: 'https://1bed39bb-5f5d-4720-b4c4-5d7ecb4fd67e.lovableproject.com?forceHideBadge=true',
-    cleartext: true
+    androidScheme: 'https',
+    cleartext: true,
+    url: 'https://1bed39bb-5f5d-4720-b4c4-5d7ecb4fd67e.lovableproject.com?forceHideBadge=true'
   },
   android: {
     buildOptions: {
