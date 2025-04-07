@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -181,24 +182,32 @@ const EditEventPage = () => {
     setIsLoading(true);
     
     try {
-      await updateEvent(eventId, {
+      const success = await updateEvent(eventId, {
         title: formData.title,
         description: formData.description,
         date: formData.date,
         time: formData.time,
         location: formData.location,
-        category: formData.category,
+        category: formData.category as any,
         price: Number(formData.price),
         maxAttendees: Number(formData.maxAttendees),
         imageUrl: formData.imageUrl,
-        dueDate: formData.dueDate,
+        dueDate: formData.dueDate, 
       });
       
-      toast({
-        title: 'Success',
-        description: 'Event updated successfully',
-      });
-      navigate('/manage-events');
+      if (success) {
+        toast({
+          title: 'Success',
+          description: 'Event updated successfully',
+        });
+        navigate('/manage-events');
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to update event',
+          variant: 'destructive',
+        });
+      }
     } catch (error) {
       toast({
         title: 'Error',

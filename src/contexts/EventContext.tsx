@@ -1,8 +1,11 @@
-
-import React, { createContext, useState, useEffect, useContext } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import { supabase } from '../integrations/supabase/client';
+import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { ExtendedUser } from '@/types/auth';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+
+export type ClubType = 'CSI' | 'ISTE' | 'DEBUGGERS';
+export type CategoryType = 'Sports' | 'Technical' | 'Cultural';
 
 export interface Event {
   id: string;
@@ -11,14 +14,23 @@ export interface Event {
   date: string;
   time: string;
   location: string;
-  imageUrl: string;
+  club: ClubType;
+  category: CategoryType;
   price: number;
-  category: string;
-  club: string;
+  organizerId: string;
   maxAttendees: number;
   currentAttendees: number;
-  organizerId: string;
-  dueDate?: string; // Added dueDate field
+  imageUrl?: string;
+  dueDate: string;
+}
+
+interface Registration {
+  id: string;
+  eventId: string;
+  userId: string;
+  userName: string;
+  registrationDate: string;
+  paymentStatus: 'pending' | 'completed';
 }
 
 export interface Feedback {
@@ -26,61 +38,80 @@ export interface Feedback {
   eventId: string;
   userId: string;
   rating: number;
-  comment: string;
+  comment?: string;
   createdAt: string;
 }
 
 interface EventContextType {
   events: Event[];
-  clubs: string[];
-  categories: string[]; // Added categories array
+  registrations: Registration[];
   feedback: Feedback[];
-  loadingEvents: boolean;
-  loadingFeedback: boolean;
-  fetchEvents: () => Promise<void>;
-  fetchFeedback: () => Promise<void>;
-  getEventById: (id: string) => Event | undefined;
-  getEventsByClub: (clubId: string) => Event[]; // Added getEventsByClub method
-  getRegistrationsByEvent: (eventId: string) => Promise<any[]>; // Changed return type to Promise<any[]>
+  clubs: ClubType[];
+  categories: CategoryType[];
+  createEvent: (event: Omit<Event, 'id'>) => Promise<boolean>;
+  updateEvent: (eventId: string, eventData: Partial<Event>) => Promise<boolean>;
+  deleteEvent: (eventId: string) => Promise<boolean>;
+  registerForEvent: (eventId: string, userId: string, userName: string) => Promise<boolean>;
+  getEventsByClub: (club: ClubType) => Event[];
+  getEventsByCategory: (category: CategoryType) => Event[];
+  getRegistrationsByEvent: (eventId: string) => Registration[];
+  getEventById: (eventId: string) => Event | undefined;
+  submitFeedback: (eventId: string, userId: string, rating: number, comment?: string) => Promise<boolean>;
   getFeedbackByEvent: (eventId: string) => Feedback[];
-  hasUserSubmittedFeedback: (eventId: string, userId: string) => boolean; // Added hasUserSubmittedFeedback method
-  createEvent: (event: Omit<Event, 'id' | 'currentAttendees'>) => Promise<void>;
-  updateEvent: (id: string, updates: Partial<Omit<Event, 'id' | 'organizerId'>>) => Promise<void>;
-  deleteEvent: (id: string) => Promise<void>;
-  registerForEvent: (eventId: string) => Promise<boolean>; // Changed return type to boolean
-  cancelRegistration: (eventId: string) => Promise<boolean>; // Changed return type to boolean
-  submitFeedback: (eventId: string, rating: number, comment: string) => Promise<boolean>; // Changed return type to boolean
+  getFeedbackByUser: (userId: string) => Feedback[];
+  hasUserSubmittedFeedback: (eventId: string, userId: string) => boolean;
+  triggerEventNotification: (title: string, message: string, eventId?: string) => void;
+  loadingEvents: boolean;
 }
 
 const EventContext = createContext<EventContextType | undefined>(undefined);
 
-export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const EventProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [events, setEvents] = useState<Event[]>([]);
-  const [clubs, setClubs] = useState<string[]>([]);
-  const [categories, setCategories] = useState<string[]>([]); // Added categories state
+  const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [feedback, setFeedback] = useState<Feedback[]>([]);
   const [loadingEvents, setLoadingEvents] = useState<boolean>(true);
-  const [loadingFeedback, setLoadingFeedback] = useState<boolean>(true);
   const { user } = useAuth();
+  const { toast } = useToast();
+  
+  const clubs: ClubType[] = ['CSI', 'ISTE', 'DEBUGGERS'];
+  const categories: CategoryType[] = ['Sports', 'Technical', 'Cultural'];
 
+  // Event used to communicate with NotificationContext
+  const [notificationEvent, setNotificationEvent] = useState<CustomEvent | null>(null);
+
+  // Function to trigger notifications without direct dependency
+  const triggerEventNotification = (title: string, message: string, eventId?: string) => {
+    // Create a custom event that NotificationContext can listen for
+    const event = new CustomEvent('event-notification', {
+      detail: { title, message, eventId, userId: user?.id }
+    });
+    
+    // Dispatch the event
+    document.dispatchEvent(event);
+  };
+
+  // Effect to fetch events from Supabase
   useEffect(() => {
-    fetchEvents();
-    fetchFeedback();
-  }, []);
-
-  const fetchEvents = async () => {
-    setLoadingEvents(true);
-    try {
-      const { data, error } = await supabase
-        .from('events')
-        .select('*');
-
-      if (error) {
-        console.error("Error fetching events:", error);
-      }
-
-      if (data) {
-        // Map database fields to our Event interface
+    const fetchEvents = async () => {
+      try {
+        setLoadingEvents(true);
+        
+        const { data, error } = await supabase
+          .from('events')
+          .select('*');
+        
+        if (error) {
+          console.error('Error fetching events:', error);
+          toast({
+            title: 'Error',
+            description: 'Failed to load events',
+            variant: 'destructive',
+          });
+          return;
+        }
+        
+        // Convert the data to match our Event interface
         const formattedEvents: Event[] = data.map(item => ({
           id: item.id,
           title: item.title,
@@ -88,349 +119,508 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           date: item.date,
           time: item.time,
           location: item.location,
-          imageUrl: item.image_url || '',
+          club: item.club as ClubType,
+          category: item.category as CategoryType,
           price: item.price,
-          category: item.category,
-          club: item.club,
+          organizerId: item.organizer_id,
           maxAttendees: item.max_attendees,
           currentAttendees: item.current_attendees,
-          organizerId: item.organizer_id,
+          imageUrl: item.image_url || undefined,
           dueDate: item.due_date
         }));
         
         setEvents(formattedEvents);
-        
-        // Extract clubs from events
-        const clubsSet = new Set(data.map(event => event.club));
-        setClubs(Array.from(clubsSet));
-        
-        // Extract categories from events
-        const categoriesSet = new Set(data.map(event => event.category));
-        setCategories(Array.from(categoriesSet));
+      } catch (error) {
+        console.error('Error in fetchEvents:', error);
+      } finally {
+        setLoadingEvents(false);
       }
-    } finally {
-      setLoadingEvents(false);
-    }
-  };
+    };
+    
+    fetchEvents();
+  }, [toast]);
 
-  const fetchFeedback = async () => {
-    setLoadingFeedback(true);
-    try {
-      const { data, error } = await supabase
-        .from('event_feedback')
-        .select('*');
-
-      if (error) {
-        console.error("Error fetching feedback:", error);
+  // Effect to fetch registrations for logged-in user
+  useEffect(() => {
+    const fetchRegistrations = async () => {
+      if (!user) return;
+      
+      try {
+        let query = supabase.from('registrations').select('*');
+        
+        // If user is a student, only fetch their registrations
+        const extendedUser = user as ExtendedUser;
+        if (extendedUser.userType === 'student') {
+          query = query.eq('user_id', user.id);
+        } 
+        // If user is an organizer, fetch registrations for their events
+        else if (extendedUser.userType === 'organizer') {
+          const { data: organizerEvents } = await supabase
+            .from('events')
+            .select('id')
+            .eq('organizer_id', user.id);
+          
+          if (organizerEvents && organizerEvents.length > 0) {
+            const eventIds = organizerEvents.map(event => event.id);
+            query = query.in('event_id', eventIds);
+          } else {
+            setRegistrations([]);
+            return;
+          }
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) {
+          console.error('Error fetching registrations:', error);
+          return;
+        }
+        
+        // Convert the data to match our Registration interface
+        const formattedRegistrations: Registration[] = data.map(item => ({
+          id: item.id,
+          eventId: item.event_id,
+          userId: item.user_id,
+          userName: item.user_name,
+          registrationDate: new Date(item.registration_date).toISOString().split('T')[0],
+          paymentStatus: item.payment_status as 'pending' | 'completed'
+        }));
+        
+        setRegistrations(formattedRegistrations);
+      } catch (error) {
+        console.error('Error in fetchRegistrations:', error);
       }
+    };
+    
+    fetchRegistrations();
+  }, [user]);
 
-      if (data) {
-        const formattedFeedback: Feedback[] = Array.isArray(data) ? data.map((item: any) => ({
+  // Effect to fetch feedback
+  useEffect(() => {
+    const fetchFeedback = async () => {
+      if (!user) return;
+      
+      try {
+        const extendedUser = user as ExtendedUser;
+        let query = supabase.from('event_feedback').select('*');
+        
+        // If user is a student, only fetch their feedback
+        if (extendedUser.userType === 'student') {
+          query = query.eq('user_id', user.id);
+        } 
+        // If user is an organizer, fetch feedback for their events
+        else if (extendedUser.userType === 'organizer') {
+          const { data: organizerEvents } = await supabase
+            .from('events')
+            .select('id')
+            .eq('organizer_id', user.id);
+          
+          if (organizerEvents && organizerEvents.length > 0) {
+            const eventIds = organizerEvents.map(event => event.id);
+            query = query.in('event_id', eventIds);
+          } else {
+            setFeedback([]);
+            return;
+          }
+        }
+        
+        const { data, error } = await query;
+        
+        if (error) {
+          console.error('Error fetching feedback:', error);
+          return;
+        }
+        
+        // Convert the data to match our Feedback interface
+        const formattedFeedback: Feedback[] = data.map(item => ({
           id: item.id,
           eventId: item.event_id,
           userId: item.user_id,
           rating: item.rating,
-          comment: item.comment,
-          createdAt: item.created_at
-        })) : [];
-        setFeedback(formattedFeedback);
-      }
-    } finally {
-      setLoadingFeedback(false);
-    }
-  };
-
-  const getEventById = (id: string): Event | undefined => {
-    return events.find(event => event.id === id);
-  };
-
-  const getEventsByClub = (clubId: string): Event[] => {
-    return events.filter(event => event.club === clubId);
-  };
-
-  const getFeedbackByEvent = (eventId: string): Feedback[] => {
-    return feedback.filter(item => item.eventId === eventId);
-  };
-
-  const hasUserSubmittedFeedback = (eventId: string, userId: string): boolean => {
-    return feedback.some(item => item.eventId === eventId && item.userId === userId);
-  };
-
-  const getRegistrationsByEvent = async (eventId: string): Promise<any[]> => {
-    try {
-      const { data, error } = await supabase
-        .from('registrations')
-        .select('*')
-        .eq('event_id', eventId);
+          comment: item.comment || undefined,
+          createdAt: new Date(item.created_at).toISOString()
+        }));
         
-      if (error) {
-        console.error("Error fetching registrations:", error);
-        return [];
+        setFeedback(formattedFeedback);
+      } catch (error) {
+        console.error('Error in fetchFeedback:', error);
       }
-      
-      return data || [];
-    } catch (error) {
-      console.error("Unexpected error fetching registrations:", error);
-      return [];
-    }
-  };
+    };
+    
+    fetchFeedback();
+  }, [user]);
 
-  const createEvent = async (event: Omit<Event, 'id' | 'currentAttendees'>) => {
+  const createEvent = async (eventData: Omit<Event, 'id'>): Promise<boolean> => {
     try {
-      // Map our Event interface to database fields
-      const dbEvent = {
-        title: event.title,
-        description: event.description,
-        date: event.date,
-        time: event.time,
-        location: event.location,
-        image_url: event.imageUrl,
-        price: event.price,
-        category: event.category,
-        club: event.club,
-        max_attendees: event.maxAttendees,
-        organizer_id: event.organizerId,
-        due_date: event.dueDate || event.date, // Use dueDate or fallback to event date
-        current_attendees: 0
+      // Format the event data for Supabase
+      const supabaseEventData = {
+        title: eventData.title,
+        description: eventData.description,
+        date: eventData.date,
+        time: eventData.time,
+        location: eventData.location,
+        club: eventData.club,
+        category: eventData.category,
+        price: eventData.price,
+        organizer_id: eventData.organizerId,
+        max_attendees: eventData.maxAttendees,
+        current_attendees: 0,
+        image_url: eventData.imageUrl || null,
+        due_date: eventData.dueDate
       };
       
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('events')
-        .insert([{
-          id: uuidv4(),
-          ...dbEvent
-        }]);
-
+        .insert(supabaseEventData)
+        .select()
+        .single();
+      
       if (error) {
-        console.error("Error creating event:", error);
-      } else {
-        fetchEvents(); // Refresh events after creating a new one
+        console.error('Create event error:', error);
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to create event',
+          variant: 'destructive',
+        });
+        return false;
       }
+      
+      // Add the new event to our local state
+      const newEvent: Event = {
+        id: data.id,
+        title: data.title,
+        description: data.description,
+        date: data.date,
+        time: data.time,
+        location: data.location,
+        club: data.club as ClubType,
+        category: data.category as CategoryType,
+        price: data.price,
+        organizerId: data.organizer_id,
+        maxAttendees: data.max_attendees,
+        currentAttendees: data.current_attendees,
+        imageUrl: data.image_url || undefined,
+        dueDate: data.due_date
+      };
+      
+      setEvents(prevEvents => [...prevEvents, newEvent]);
+      
+      // Notify all students about the new event
+      const extendedUser = user as ExtendedUser | null;
+      if (extendedUser?.userType === 'organizer') {
+        // Use the notification method
+        triggerEventNotification(
+          `New Event: ${newEvent.title}`,
+          `${extendedUser.clubName} just posted a new event: ${newEvent.title}. Registration closes on ${newEvent.dueDate}.`,
+          newEvent.id
+        );
+      }
+      
+      return true;
     } catch (error) {
-      console.error("Unexpected error creating event:", error);
+      console.error('Create event error:', error);
+      return false;
     }
   };
 
-  const updateEvent = async (id: string, updates: Partial<Omit<Event, 'id' | 'organizerId'>>) => {
+  const updateEvent = async (eventId: string, eventData: Partial<Event>): Promise<boolean> => {
     try {
-      // Map our Event interface updates to database fields
-      const dbUpdates: any = {};
+      // Format the event data for Supabase
+      const supabaseEventData: Record<string, any> = {};
       
-      if (updates.title) dbUpdates.title = updates.title;
-      if (updates.description) dbUpdates.description = updates.description;
-      if (updates.date) dbUpdates.date = updates.date;
-      if (updates.time) dbUpdates.time = updates.time;
-      if (updates.location) dbUpdates.location = updates.location;
-      if (updates.imageUrl) dbUpdates.image_url = updates.imageUrl;
-      if (updates.price !== undefined) dbUpdates.price = updates.price;
-      if (updates.category) dbUpdates.category = updates.category;
-      if (updates.club) dbUpdates.club = updates.club;
-      if (updates.maxAttendees !== undefined) dbUpdates.max_attendees = updates.maxAttendees;
-      if (updates.currentAttendees !== undefined) dbUpdates.current_attendees = updates.currentAttendees;
-      if (updates.dueDate) dbUpdates.due_date = updates.dueDate;
+      // Convert camelCase to snake_case for Supabase
+      if (eventData.title) supabaseEventData.title = eventData.title;
+      if (eventData.description) supabaseEventData.description = eventData.description;
+      if (eventData.date) supabaseEventData.date = eventData.date;
+      if (eventData.time) supabaseEventData.time = eventData.time;
+      if (eventData.location) supabaseEventData.location = eventData.location;
+      if (eventData.club) supabaseEventData.club = eventData.club;
+      if (eventData.category) supabaseEventData.category = eventData.category;
+      if (eventData.price !== undefined) supabaseEventData.price = eventData.price;
+      if (eventData.maxAttendees !== undefined) supabaseEventData.max_attendees = eventData.maxAttendees;
+      if (eventData.currentAttendees !== undefined) supabaseEventData.current_attendees = eventData.currentAttendees;
+      if ('imageUrl' in eventData) supabaseEventData.image_url = eventData.imageUrl;
+      if (eventData.dueDate) supabaseEventData.due_date = eventData.dueDate;
       
       const { error } = await supabase
         .from('events')
-        .update(dbUpdates)
-        .eq('id', id);
-
+        .update(supabaseEventData)
+        .eq('id', eventId);
+      
       if (error) {
-        console.error("Error updating event:", error);
-      } else {
-        fetchEvents(); // Refresh events after updating
+        console.error('Update event error:', error);
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to update event',
+          variant: 'destructive',
+        });
+        return false;
       }
+      
+      // Update the event in our local state
+      setEvents(prevEvents => 
+        prevEvents.map(event => 
+          event.id === eventId ? { ...event, ...eventData } : event
+        )
+      );
+      
+      return true;
     } catch (error) {
-      console.error("Unexpected error updating event:", error);
+      console.error('Update event error:', error);
+      return false;
     }
   };
 
-  const deleteEvent = async (id: string) => {
+  const deleteEvent = async (eventId: string): Promise<boolean> => {
     try {
       const { error } = await supabase
         .from('events')
         .delete()
-        .eq('id', id);
-
+        .eq('id', eventId);
+      
       if (error) {
-        console.error("Error deleting event:", error);
-      } else {
-        fetchEvents(); // Refresh events after deleting
-      }
-    } catch (error) {
-      console.error("Unexpected error deleting event:", error);
-    }
-  };
-
-  const registerForEvent = async (eventId: string): Promise<boolean> => {
-    if (!user) {
-      console.error("User not authenticated.");
-      return false;
-    }
-
-    try {
-      // Optimistically update the local state
-      setEvents(currentEvents =>
-        currentEvents.map(event =>
-          event.id === eventId ? { ...event, currentAttendees: event.currentAttendees + 1 } : event
-        )
-      );
-
-      const { data: eventData, error: eventError } = await supabase
-        .from('events')
-        .select('max_attendees, current_attendees')
-        .eq('id', eventId)
-        .single();
-
-      if (eventError) {
-        console.error("Error fetching event details:", eventError);
-        // Revert the optimistic update
-        fetchEvents();
-        return false;
-      }
-
-      if (eventData && eventData.current_attendees >= eventData.max_attendees) {
-        console.log("Event is full. Registration cannot be completed.");
-        // Revert the optimistic update
-        fetchEvents();
-        return false;
-      }
-
-      // Get the username from the profile
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('full_name')
-        .eq('id', user.id)
-        .single();
-        
-      if (profileError) {
-        console.error("Error fetching profile:", profileError);
-        fetchEvents();
+        console.error('Delete event error:', error);
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to delete event',
+          variant: 'destructive',
+        });
         return false;
       }
       
-      const userName = profileData?.full_name || 'Anonymous User';
+      // Remove the event from our local state
+      setEvents(prevEvents => prevEvents.filter(event => event.id !== eventId));
+      
+      return true;
+    } catch (error) {
+      console.error('Delete event error:', error);
+      return false;
+    }
+  };
 
-      const { error } = await supabase
+  const registerForEvent = async (eventId: string, userId: string, userName: string): Promise<boolean> => {
+    try {
+      const event = events.find(e => e.id === eventId);
+      
+      if (!event) {
+        throw new Error("Event not found");
+      }
+      
+      // Check if due date has passed
+      const currentDate = new Date();
+      const dueDateObj = new Date(event.dueDate);
+      
+      if (currentDate > dueDateObj) {
+        throw new Error("Registration deadline has passed");
+      }
+      
+      // Check if the user has already registered for this event
+      const existingRegistration = registrations.find(
+        reg => reg.eventId === eventId && reg.userId === userId
+      );
+      
+      if (existingRegistration) {
+        toast({
+          title: "Already Registered",
+          description: "You've already registered for this event",
+          variant: "default",
+        });
+        return true; // Return true to allow payment page redirect for already registered users
+      }
+      
+      // Insert registration into Supabase
+      const { data, error } = await supabase
         .from('registrations')
         .insert({
           event_id: eventId,
-          user_id: user.id,
+          user_id: userId,
           user_name: userName,
-          registration_date: new Date().toISOString()
-        });
-
+          payment_status: 'pending'
+        })
+        .select()
+        .single();
+      
       if (error) {
-        console.error("Error registering for event:", error);
-        // Revert the optimistic update
-        fetchEvents();
+        console.error('Register for event error:', error);
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to register for event',
+          variant: 'destructive',
+        });
         return false;
-      } else {
-        console.log("Successfully registered for event.");
-        fetchEvents();
-        return true;
       }
-    } catch (error) {
-      console.error("Unexpected error registering for event:", error);
-      // Revert the optimistic update
-      fetchEvents();
-      return false;
-    }
-  };
-
-  const cancelRegistration = async (eventId: string): Promise<boolean> => {
-    if (!user) {
-      console.error("User not authenticated.");
-      return false;
-    }
-
-    try {
-      // Optimistically update the local state
-      setEvents(currentEvents =>
-        currentEvents.map(event =>
-          event.id === eventId ? { ...event, currentAttendees: event.currentAttendees - 1 } : event
+      
+      // Update current attendees in events table
+      await supabase
+        .from('events')
+        .update({ current_attendees: event.currentAttendees + 1 })
+        .eq('id', eventId);
+      
+      // Add registration to local state
+      const newRegistration: Registration = {
+        id: data.id,
+        eventId: data.event_id,
+        userId: data.user_id,
+        userName: data.user_name,
+        registrationDate: new Date().toISOString().split('T')[0],
+        paymentStatus: 'pending'
+      };
+      
+      setRegistrations(prev => [...prev, newRegistration]);
+      
+      // Update event attendee count in local state
+      setEvents(prevEvents => 
+        prevEvents.map(event => 
+          event.id === eventId 
+            ? { ...event, currentAttendees: event.currentAttendees + 1 } 
+            : event
         )
       );
-
-      const { error } = await supabase
-        .from('registrations')
-        .delete()
-        .eq('event_id', eventId)
-        .eq('user_id', user.id);
-
-      if (error) {
-        console.error("Error cancelling registration:", error);
-        // Revert the optimistic update
-        fetchEvents();
-        return false;
-      } else {
-        console.log("Successfully cancelled registration.");
-        fetchEvents();
-        return true;
-      }
-    } catch (error) {
-      console.error("Unexpected error cancelling registration:", error);
-      // Revert the optimistic update
-      fetchEvents();
+      
+      // Notify user of successful registration
+      triggerEventNotification(
+        "Registration Confirmed",
+        `You have successfully registered for ${event.title}`,
+        eventId
+      );
+      
+      return true;
+    } catch (error: any) {
+      console.error('Register for event error:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to register for event',
+        variant: 'destructive',
+      });
       return false;
     }
   };
 
-  const submitFeedback = async (eventId: string, rating: number, comment: string): Promise<boolean> => {
-    if (!user) {
-      console.error("User not authenticated.");
-      return false;
-    }
-
-    const userId = user.id;
-
+  const submitFeedback = async (
+    eventId: string, 
+    userId: string, 
+    rating: number, 
+    comment?: string
+  ): Promise<boolean> => {
     try {
-      const { error } = await supabase
+      // Check if user has already submitted feedback for this event
+      const existingFeedback = feedback.find(
+        f => f.eventId === eventId && f.userId === userId
+      );
+      
+      if (existingFeedback) {
+        toast({
+          title: "Feedback Already Submitted",
+          description: "You've already provided feedback for this event",
+          variant: "default",
+        });
+        return false;
+      }
+      
+      // Insert feedback into Supabase
+      const { data, error } = await supabase
         .from('event_feedback')
         .insert({
           event_id: eventId,
           user_id: userId,
-          rating,
-          comment
-        });
-
+          rating: rating,
+          comment: comment || null
+        })
+        .select()
+        .single();
+      
       if (error) {
-        console.error("Error submitting feedback:", error);
+        console.error('Submit feedback error:', error);
+        toast({
+          title: 'Error',
+          description: error.message || 'Failed to submit feedback',
+          variant: 'destructive',
+        });
         return false;
-      } else {
-        console.log("Feedback submitted successfully.");
-        fetchFeedback(); // Refresh feedback after submitting
-        return true;
       }
-    } catch (error) {
-      console.error("Unexpected error submitting feedback:", error);
+      
+      // Add feedback to local state
+      const newFeedback: Feedback = {
+        id: data.id,
+        eventId: data.event_id,
+        userId: data.user_id,
+        rating: data.rating,
+        comment: data.comment || undefined,
+        createdAt: new Date(data.created_at).toISOString()
+      };
+      
+      setFeedback(prev => [...prev, newFeedback]);
+      
+      toast({
+        title: "Feedback Submitted",
+        description: "Thank you for your feedback!",
+        variant: "default",
+      });
+      
+      return true;
+    } catch (error: any) {
+      console.error('Submit feedback error:', error);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to submit feedback',
+        variant: 'destructive',
+      });
       return false;
     }
   };
 
-  const value: EventContextType = {
-    events,
-    clubs,
-    categories,
-    feedback,
-    loadingEvents,
-    loadingFeedback,
-    fetchEvents,
-    fetchFeedback,
-    getEventById,
-    getEventsByClub,
-    getRegistrationsByEvent,
-    getFeedbackByEvent,
-    hasUserSubmittedFeedback,
-    createEvent,
-    updateEvent,
-    deleteEvent,
-    registerForEvent,
-    cancelRegistration,
-    submitFeedback,
+  const getFeedbackByEvent = (eventId: string): Feedback[] => {
+    return feedback.filter(f => f.eventId === eventId);
+  };
+
+  const getFeedbackByUser = (userId: string): Feedback[] => {
+    return feedback.filter(f => f.userId === userId);
+  };
+
+  const hasUserSubmittedFeedback = (eventId: string, userId: string): boolean => {
+    return feedback.some(f => f.eventId === eventId && f.userId === userId);
+  };
+
+  const getEventsByClub = (club: ClubType): Event[] => {
+    return events.filter(event => event.club === club);
+  };
+
+  const getEventsByCategory = (category: CategoryType): Event[] => {
+    return events.filter(event => event.category === category);
+  };
+
+  const getRegistrationsByEvent = (eventId: string): Registration[] => {
+    return registrations.filter(reg => reg.eventId === eventId);
+  };
+
+  const getEventById = (eventId: string): Event | undefined => {
+    return events.find(event => event.id === eventId);
   };
 
   return (
-    <EventContext.Provider value={value}>
+    <EventContext.Provider
+      value={{
+        events,
+        registrations,
+        feedback,
+        clubs,
+        categories,
+        createEvent,
+        updateEvent,
+        deleteEvent,
+        registerForEvent,
+        getEventsByClub,
+        getEventsByCategory,
+        getRegistrationsByEvent,
+        getEventById,
+        submitFeedback,
+        getFeedbackByEvent,
+        getFeedbackByUser,
+        hasUserSubmittedFeedback,
+        triggerEventNotification,
+        loadingEvents
+      }}
+    >
       {children}
     </EventContext.Provider>
   );
@@ -438,8 +628,8 @@ export const EventProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
 export const useEvents = () => {
   const context = useContext(EventContext);
-  if (!context) {
-    throw new Error("useEvents must be used within an EventProvider");
+  if (context === undefined) {
+    throw new Error('useEvents must be used within an EventProvider');
   }
   return context;
 };

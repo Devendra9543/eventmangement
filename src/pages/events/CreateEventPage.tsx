@@ -206,26 +206,35 @@ const CreateEventPage = () => {
     try {
       const clubName = profile?.club_name || 'Unnamed Club';
       
-      await createEvent({
+      const success = await createEvent({
         title: formData.title,
         description: formData.description,
         date: formData.date,
         time: formData.time,
         location: formData.location,
-        club: clubName,
-        category: formData.category,
+        club: clubName as any,
+        category: formData.category as any,
         price: Number(formData.price),
         organizerId: user.id,
         maxAttendees: Number(formData.maxAttendees),
+        currentAttendees: 0,
         imageUrl: formData.imageUrl,
-        dueDate: formData.dueDate,
+        dueDate: formData.dueDate, 
       });
       
-      toast({
-        title: 'Success',
-        description: 'Event created successfully',
-      });
-      navigate('/manage-events');
+      if (success) {
+        toast({
+          title: 'Success',
+          description: 'Event created successfully',
+        });
+        navigate('/manage-events');
+      } else {
+        toast({
+          title: 'Error',
+          description: 'Failed to create event',
+          variant: 'destructive',
+        });
+      }
     } catch (error) {
       toast({
         title: 'Error',

@@ -40,8 +40,9 @@ const FeedbackForm: React.FC<FeedbackFormProps> = ({ eventId, userId, onSuccess 
     try {
       const success = await submitFeedback(
         eventId,
+        userId,
         values.rating,
-        values.comment || ''
+        values.comment
       );
       
       if (success && onSuccess) {

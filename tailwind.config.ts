@@ -63,45 +63,45 @@ export default {
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
 				},
-				// College event app colors - updated with a more vibrant palette
+				// College event app colors
 				collegeBlue: {
-					DEFAULT: '#3b82f6',
-					50: '#eff6ff',
-					100: '#dbeafe',
-					200: '#bfdbfe',
-					300: '#93c5fd',
-					400: '#60a5fa',
-					500: '#3b82f6',
-					600: '#2563eb',
-					700: '#1d4ed8',
-					800: '#1e40af',
-					900: '#1e3a8a',
+					DEFAULT: '#2563EB',
+					50: '#EBF2FF',
+					100: '#D6E4FF',
+					200: '#ADC8FF',
+					300: '#85ACFF',
+					400: '#5C90FF',
+					500: '#2563EB',
+					600: '#1D4ED8',
+					700: '#1E40AF',
+					800: '#1E3A8A',
+					900: '#172554',
 				},
 				collegePurple: {
-					DEFAULT: '#8b5cf6',
-					50: '#f5f3ff',
-					100: '#ede9fe',
-					200: '#ddd6fe',
-					300: '#c4b5fd',
-					400: '#a78bfa',
-					500: '#8b5cf6',
-					600: '#7c3aed',
-					700: '#6d28d9',
-					800: '#5b21b6',
-					900: '#4c1d95',
+					DEFAULT: '#8B5CF6',
+					50: '#F5F3FF',
+					100: '#EDE9FE',
+					200: '#DDD6FE',
+					300: '#C4B5FD',
+					400: '#A78BFA',
+					500: '#8B5CF6',
+					600: '#7C3AED',
+					700: '#6D28D9',
+					800: '#5B21B6',
+					900: '#4C1D95',
 				},
 				collegeTeal: {
-					DEFAULT: '#06b6d4',
-					50: '#ecfeff',
-					100: '#cffafe',
-					200: '#a5f3fc',
-					300: '#67e8f9',
-					400: '#22d3ee',
-					500: '#06b6d4',
-					600: '#0891b2',
-					700: '#0e7490',
-					800: '#155e75',
-					900: '#164e63',
+					DEFAULT: '#06B6D4',
+					50: '#ECFEFF',
+					100: '#CFFAFE',
+					200: '#A5F3FC',
+					300: '#67E8F9',
+					400: '#22D3EE',
+					500: '#06B6D4',
+					600: '#0891B2',
+					700: '#0E7490',
+					800: '#155E75',
+					900: '#164E63',
 				}
 			},
 			borderRadius: {
@@ -125,19 +125,11 @@ export default {
 					to: {
 						height: '0'
 					}
-				},
-				'pulse-subtle': {
-					'0%, 100%': { opacity: '1' },
-					'50%': { opacity: '0.8' }
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out',
-				'pulse-subtle': 'pulse-subtle 2s ease-in-out infinite'
-			},
-			boxShadow: {
-				'soft': '0 4px 20px 0 rgba(0, 0, 0, 0.05)'
+				'accordion-up': 'accordion-up 0.2s ease-out'
 			}
 		}
 	},

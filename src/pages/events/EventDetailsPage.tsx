@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEvents } from '@/contexts/EventContext';
@@ -42,7 +43,7 @@ const EventDetailsPage = () => {
       setIsRegistered(false);
       
       // Check if user has submitted feedback for this event
-      if (eventId && user.id) {
+      if (eventId) {
         setUserHasSubmittedFeedback(hasUserSubmittedFeedback(eventId, user.id));
       }
     }
@@ -79,8 +80,11 @@ const EventDetailsPage = () => {
 
     try {
       setRegistering(true);
-      // Fixed registerForEvent call to match the updated method signature
-      const success = await registerForEvent(event.id);
+      const success = await registerForEvent(
+        event.id,
+        user.id,
+        profile.full_name
+      );
 
       if (success) {
         setIsRegistered(true);
@@ -152,7 +156,7 @@ const EventDetailsPage = () => {
   }
 
   const isEventFull = event.currentAttendees >= event.maxAttendees;
-  const isRegistrationClosed = event.dueDate ? new Date() > new Date(event.dueDate) : false;
+  const isRegistrationClosed = new Date() > new Date(event.dueDate);
   const canRegister = !isRegistered && !isEventFull && !isRegistrationClosed;
   const isEventPast = isPastEvent(event.date);
   const eventFeedback = eventId ? getFeedbackByEvent(eventId) : [];
