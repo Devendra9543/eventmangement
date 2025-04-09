@@ -252,7 +252,7 @@ const PaymentPage = () => {
                     Processing...
                   </div>
                 ) : (
-                  `Pay ₹${getPaymentAmount()} with UPI`
+                  "Pay"
                 )}
               </Button>
             </div>
