@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEvents } from '@/contexts/EventContext';
@@ -15,7 +16,7 @@ import FeedbackDisplay from '@/components/feedback/FeedbackDisplay';
 const EventDetailsPage = () => {
   const { eventId } = useParams();
   const navigate = useNavigate();
-  const { getEventById, registerForEvent, loadingEvents, getFeedbackByEvent, hasUserSubmittedFeedback } = useEvents();
+  const { getEventById, registerForEvent, loadingEvents, getFeedbackByEvent, hasUserSubmittedFeedback, registrations } = useEvents();
   const { user, profile, isAuthenticated, userType } = useAuth();
   const { toast } = useToast();
   
@@ -35,14 +36,18 @@ const EventDetailsPage = () => {
   }, [eventId, getEventById, loadingEvents]);
 
   useEffect(() => {
-    if (event && user && userType === 'student') {
-      setIsRegistered(false);
+    if (event && user) {
+      // Check if the user has registered for this event
+      const hasRegistered = registrations.some(
+        registration => registration.eventId === eventId && registration.userId === user.id
+      );
+      setIsRegistered(hasRegistered);
       
-      if (eventId) {
+      if (userType === 'student' && eventId) {
         setUserHasSubmittedFeedback(hasUserSubmittedFeedback(eventId, user.id));
       }
     }
-  }, [event, user, userType, eventId, hasUserSubmittedFeedback]);
+  }, [event, user, userType, eventId, hasUserSubmittedFeedback, registrations]);
 
   const handleRegister = async () => {
     if (!isAuthenticated) {
