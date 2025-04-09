@@ -65,23 +65,48 @@ const PaymentPage = () => {
     const paymentAmount = amount || (event?.price?.toString() || '0');
     
     try {
-      // For demonstration: Generate a UPI deep link
-      // Format: upi://pay?pa=UPIID&pn=NAME&am=AMOUNT&cu=INR&tn=DESCRIPTION
+      // Create a UPI deep link
       const upiPaymentLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent("College Events")}&am=${paymentAmount}&cu=INR&tn=${encodeURIComponent(`Payment for ${event.title}`)}`;
       
-      // In a real app, we would redirect to this URL
       console.log("UPI Payment link:", upiPaymentLink);
       
-      // For demo purposes, we'll simulate success after a short delay
+      // Create a hidden anchor element to trigger the deep link
+      const linkElement = document.createElement('a');
+      linkElement.href = upiPaymentLink;
+      linkElement.style.display = 'none';
+      document.body.appendChild(linkElement);
+      
+      // Click the link to open the UPI app
+      linkElement.click();
+      
+      // Remove the link element
+      document.body.removeChild(linkElement);
+      
+      // Simulate payment verification - in a real app, you would implement a callback
+      // or check the payment status on your server
       setTimeout(() => {
-        setPaymentStatus('success');
-        setProcessing(false);
+        // Handle case where user might have canceled or payment failed
+        // Prompt the user to confirm if payment was successful
+        const confirmed = window.confirm("Did you complete the payment in your UPI app?");
         
-        toast({
-          title: "Payment Successful",
-          description: `You have successfully paid ₹${paymentAmount} for ${event.title}`,
-        });
-      }, 2000);
+        if (confirmed) {
+          setPaymentStatus('success');
+          toast({
+            title: "Payment Successful",
+            description: `You have successfully paid ₹${paymentAmount} for ${event.title}`,
+          });
+        } else {
+          setPaymentStatus('failed');
+          toast({
+            title: "Payment Canceled",
+            description: "You did not complete the payment",
+            variant: "destructive",
+          });
+        }
+        
+        setProcessing(false);
+      }, 5000); // Give user some time to complete payment in the UPI app
+      
     } catch (error) {
       console.error("Payment error:", error);
       setPaymentStatus('failed');
