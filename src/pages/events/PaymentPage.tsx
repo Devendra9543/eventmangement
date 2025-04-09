@@ -61,21 +61,38 @@ const PaymentPage = () => {
     
     setProcessing(true);
     
-    // For demonstration: In a real app, we would generate a UPI intent URL and redirect
-    // Example UPI deep link format: upi://pay?pa=UPIID&pn=NAME&am=AMOUNT&cu=INR&tn=DESCRIPTION
+    // Prepare payment amount - use event price if amount param is not available
+    const paymentAmount = amount || (event?.price?.toString() || '0');
     
-    // Simulate processing time
-    setTimeout(() => {
-      // For demonstration: Simulate successful payment
-      // In a real implementation, you would redirect to the UPI app and handle callbacks
-      setPaymentStatus('success');
+    try {
+      // For demonstration: Generate a UPI deep link
+      // Format: upi://pay?pa=UPIID&pn=NAME&am=AMOUNT&cu=INR&tn=DESCRIPTION
+      const upiPaymentLink = `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent("College Events")}&am=${paymentAmount}&cu=INR&tn=${encodeURIComponent(`Payment for ${event.title}`)}`;
+      
+      // In a real app, we would redirect to this URL
+      console.log("UPI Payment link:", upiPaymentLink);
+      
+      // For demo purposes, we'll simulate success after a short delay
+      setTimeout(() => {
+        setPaymentStatus('success');
+        setProcessing(false);
+        
+        toast({
+          title: "Payment Successful",
+          description: `You have successfully paid ₹${paymentAmount} for ${event.title}`,
+        });
+      }, 2000);
+    } catch (error) {
+      console.error("Payment error:", error);
+      setPaymentStatus('failed');
       setProcessing(false);
       
       toast({
-        title: "Payment Successful",
-        description: `You have successfully paid ₹${amount} for ${event.title}`,
+        title: "Payment Failed",
+        description: "There was an error processing your payment",
+        variant: "destructive",
       });
-    }, 2000);
+    }
   };
   
   const handleReturn = () => {
@@ -90,6 +107,12 @@ const PaymentPage = () => {
     // Basic UPI ID validation (username@provider format)
     const upiRegex = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+$/;
     return upiRegex.test(upiId);
+  };
+  
+  // Get payment amount - use event price if amount param is not available
+  const getPaymentAmount = () => {
+    if (amount) return amount;
+    return event?.price?.toString() || '0';
   };
   
   if (loadingEvents) {
@@ -110,7 +133,7 @@ const PaymentPage = () => {
             <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
             <h2 className="text-2xl font-bold text-green-600 mb-2">Payment Successful!</h2>
             <p className="text-gray-600 mb-6">
-              Thank you for your payment of ₹{amount}. Your registration for {event?.title} is confirmed.
+              Thank you for your payment of ₹{getPaymentAmount()}. Your registration for {event?.title} is confirmed.
             </p>
             <Button 
               onClick={handleReturn} 
@@ -145,11 +168,11 @@ const PaymentPage = () => {
                 <div className="p-4 border-t border-gray-100">
                   <div className="flex justify-between mb-2">
                     <span>Registration Fee</span>
-                    <span>₹{amount}</span>
+                    <span>₹{getPaymentAmount()}</span>
                   </div>
                   <div className="flex justify-between font-bold pt-2 border-t border-gray-100">
                     <span>Total Amount</span>
-                    <span>₹{amount}</span>
+                    <span>₹{getPaymentAmount()}</span>
                   </div>
                 </div>
               </div>
@@ -229,7 +252,7 @@ const PaymentPage = () => {
                     Processing...
                   </div>
                 ) : (
-                  `Pay ₹${amount} with UPI`
+                  `Pay ₹${getPaymentAmount()} with UPI`
                 )}
               </Button>
             </div>

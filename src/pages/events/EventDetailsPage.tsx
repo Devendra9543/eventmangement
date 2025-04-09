@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useEvents } from '@/contexts/EventContext';
@@ -35,14 +34,10 @@ const EventDetailsPage = () => {
     }
   }, [eventId, getEventById, loadingEvents]);
 
-  // Check if student is registered for this event
   useEffect(() => {
     if (event && user && userType === 'student') {
-      // This would be a good place to check if user is already registered
-      // For now, we'll use a placeholder and assume not registered
       setIsRegistered(false);
       
-      // Check if user has submitted feedback for this event
       if (eventId) {
         setUserHasSubmittedFeedback(hasUserSubmittedFeedback(eventId, user.id));
       }
@@ -93,15 +88,13 @@ const EventDetailsPage = () => {
           description: `You are now registered for ${event.title}`,
         });
         
-        // If the event has a price > 0, redirect to payment page
         if (event.price > 0) {
           toast({
             title: "Payment Required",
             description: `Redirecting to payment page for ₹${event.price}`,
           });
           
-          // Redirect to payment page with event ID
-          navigate(`/payment/${event.id}`);
+          navigate(`/payment/${event.id}?amount=${event.price}`);
         }
       }
     } catch (error) {
@@ -116,7 +109,6 @@ const EventDetailsPage = () => {
     }
   };
 
-  // Function to check if event is in the past
   const isPastEvent = (eventDate: string) => {
     const today = new Date();
     const date = new Date(eventDate);
