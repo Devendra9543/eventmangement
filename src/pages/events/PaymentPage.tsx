@@ -5,7 +5,7 @@ import { useEvents } from '@/contexts/EventContext';
 import { useAuth } from '@/contexts/AuthContext';
 import PageHeader from '@/components/common/PageHeader';
 import BottomNavigation from '@/components/common/BottomNavigation';
-import { CreditCard, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { IndianRupee, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { formatDate } from '@/lib/utils';
@@ -22,6 +22,7 @@ const PaymentPage = () => {
   const [event, setEvent] = useState(null);
   const [processing, setProcessing] = useState(false);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'success' | 'failed'>('idle');
+  const [upiId, setUpiId] = useState('');
   
   useEffect(() => {
     if (!isAuthenticated) {
@@ -49,13 +50,24 @@ const PaymentPage = () => {
   }, [eventId, getEventById, loadingEvents, isAuthenticated, navigate, toast]);
   
   const handlePayment = async () => {
-    if (!event || !user) return;
+    if (!event || !user || !upiId.trim()) {
+      toast({
+        title: "Invalid UPI ID",
+        description: "Please enter a valid UPI ID",
+        variant: "destructive",
+      });
+      return;
+    }
     
     setProcessing(true);
     
-    // Simulate payment processing
+    // For demonstration: In a real app, we would generate a UPI intent URL and redirect
+    // Example UPI deep link format: upi://pay?pa=UPIID&pn=NAME&am=AMOUNT&cu=INR&tn=DESCRIPTION
+    
+    // Simulate processing time
     setTimeout(() => {
-      // Simulate successful payment
+      // For demonstration: Simulate successful payment
+      // In a real implementation, you would redirect to the UPI app and handle callbacks
       setPaymentStatus('success');
       setProcessing(false);
       
@@ -72,6 +84,12 @@ const PaymentPage = () => {
     } else {
       navigate(`/event/${eventId}`);
     }
+  };
+  
+  const isValidUpiId = (upiId: string) => {
+    // Basic UPI ID validation (username@provider format)
+    const upiRegex = /^[a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+$/;
+    return upiRegex.test(upiId);
   };
   
   if (loadingEvents) {
@@ -139,51 +157,62 @@ const PaymentPage = () => {
             
             <div className="bg-white rounded-lg shadow p-4 mb-4">
               <h3 className="font-semibold mb-4 flex items-center">
-                <CreditCard className="h-5 w-5 mr-2 text-collegeBlue-500" />
-                Payment Details
+                <IndianRupee className="h-5 w-5 mr-2 text-collegeBlue-500" />
+                UPI Payment
               </h3>
               
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Card Number</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Enter UPI ID</label>
                   <input
                     type="text"
-                    placeholder="1234 5678 9012 3456"
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                    maxLength={19}
-                    // This is a mock implementation, no actual payment processing
+                    placeholder="yourname@upi"
+                    className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-collegeBlue-500"
+                    value={upiId}
+                    onChange={(e) => setUpiId(e.target.value)}
                   />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Example: yourname@okhdfcbank, username@ybl
+                  </p>
                 </div>
                 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Expiry Date</label>
-                    <input
-                      type="text"
-                      placeholder="MM/YY"
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      maxLength={5}
-                    />
+                <div className="flex flex-wrap gap-2 justify-center">
+                  {/* UPI App options */}
+                  <div className="flex items-center justify-center bg-gray-50 p-2 rounded-md w-20 h-20 border border-gray-200">
+                    <div className="text-center">
+                      <div className="w-8 h-8 mx-auto bg-green-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">GPay</span>
+                      </div>
+                      <p className="text-xs mt-1">Google Pay</p>
+                    </div>
                   </div>
                   
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">CVV</label>
-                    <input
-                      type="text"
-                      placeholder="123"
-                      className="w-full p-2 border border-gray-300 rounded-md"
-                      maxLength={3}
-                    />
+                  <div className="flex items-center justify-center bg-gray-50 p-2 rounded-md w-20 h-20 border border-gray-200">
+                    <div className="text-center">
+                      <div className="w-8 h-8 mx-auto bg-blue-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">PhPe</span>
+                      </div>
+                      <p className="text-xs mt-1">PhonePe</p>
+                    </div>
                   </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Card Holder Name</label>
-                  <input
-                    type="text"
-                    placeholder="John Doe"
-                    className="w-full p-2 border border-gray-300 rounded-md"
-                  />
+                  
+                  <div className="flex items-center justify-center bg-gray-50 p-2 rounded-md w-20 h-20 border border-gray-200">
+                    <div className="text-center">
+                      <div className="w-8 h-8 mx-auto bg-purple-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">PM</span>
+                      </div>
+                      <p className="text-xs mt-1">Paytm</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center justify-center bg-gray-50 p-2 rounded-md w-20 h-20 border border-gray-200">
+                    <div className="text-center">
+                      <div className="w-8 h-8 mx-auto bg-yellow-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-xs font-bold">AM</span>
+                      </div>
+                      <p className="text-xs mt-1">Amazon Pay</p>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -192,7 +221,7 @@ const PaymentPage = () => {
               <Button 
                 onClick={handlePayment}
                 className="w-full bg-collegeBlue-500 hover:bg-collegeBlue-600 text-white py-3 rounded-lg font-medium text-center"
-                disabled={processing}
+                disabled={processing || !isValidUpiId(upiId)}
               >
                 {processing ? (
                   <div className="flex items-center justify-center">
@@ -200,7 +229,7 @@ const PaymentPage = () => {
                     Processing...
                   </div>
                 ) : (
-                  `Pay ₹${amount}`
+                  `Pay ₹${amount} with UPI`
                 )}
               </Button>
             </div>
