@@ -24,6 +24,12 @@ interface NotificationContextType {
 
 const NotificationContext = createContext<NotificationContextType | undefined>(undefined);
 
+// Helper function to check if the app is in standalone mode (PWA) or running through Capacitor
+const isInStandaloneMode = () => 
+  window.matchMedia('(display-mode: standalone)').matches || 
+  (window.navigator as any).standalone === true || 
+  window.location.href.includes('capacitor://');
+
 export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const { user } = useAuth();
@@ -46,8 +52,7 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   // Set up Push Notification Listeners
   useEffect(() => {
     // Only setup listeners on actual devices (not in browser)
-    if (!(window.matchMedia('(display-mode: standalone)').matches || 
-          window.navigator.standalone === true)) {
+    if (!isInStandaloneMode()) {
       return;
     }
 

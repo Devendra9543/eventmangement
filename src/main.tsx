@@ -25,8 +25,13 @@ const initializePushNotifications = async () => {
 }
 
 // Only initialize on actual devices, not in browser
-if (window.matchMedia('(display-mode: standalone)').matches || 
-    window.navigator.standalone === true) {
+// Check if the app is in standalone mode (PWA) or running through Capacitor
+const isInStandaloneMode = () => 
+  window.matchMedia('(display-mode: standalone)').matches || 
+  (window.navigator as any).standalone === true || 
+  window.location.href.includes('capacitor://');
+
+if (isInStandaloneMode()) {
   initializePushNotifications()
 }
 
