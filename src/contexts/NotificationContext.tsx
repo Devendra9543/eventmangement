@@ -1,5 +1,7 @@
+
 import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
 import { useAuth } from './AuthContext';
+import { PushNotifications } from '@capacitor/push-notifications';
 
 interface Notification {
   id: string;
@@ -40,6 +42,52 @@ export const NotificationProvider: React.FC<{ children: ReactNode }> = ({ childr
   }, [notifications]);
   
   const unreadCount = notifications.filter(n => !n.read && (!n.userId || n.userId === user?.id)).length;
+
+  // Set up Push Notification Listeners
+  useEffect(() => {
+    // Only setup listeners on actual devices (not in browser)
+    if (!(window.matchMedia('(display-mode: standalone)').matches || 
+          window.navigator.standalone === true)) {
+      return;
+    }
+
+    const setupPushListeners = async () => {
+      // On registration success
+      PushNotifications.addListener('registration', (token) => {
+        console.log('Push registration success, token: ' + token.value);
+        // Here you would typically send this token to your server
+      });
+
+      // On registration error
+      PushNotifications.addListener('registrationError', (error) => {
+        console.error('Error on registration: ' + JSON.stringify(error));
+      });
+
+      // On push notification received
+      PushNotifications.addListener('pushNotificationReceived', (notification) => {
+        console.log('Push notification received: ' + JSON.stringify(notification));
+        // Add to our local notifications
+        addNotification({
+          title: notification.title || 'New Notification',
+          message: notification.body || '',
+          userId: user?.id
+        });
+      });
+
+      // On push notification action
+      PushNotifications.addListener('pushNotificationActionPerformed', (action) => {
+        console.log('Push notification action performed: ' + JSON.stringify(action));
+        // Handle notification actions (e.g., navigate to a specific page)
+      });
+    };
+
+    setupPushListeners();
+
+    // Cleanup listeners when component unmounts
+    return () => {
+      PushNotifications.removeAllListeners();
+    };
+  }, [user]);
 
   // Listen for notifications from the EventContext
   useEffect(() => {
