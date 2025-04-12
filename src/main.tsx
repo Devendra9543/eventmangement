@@ -5,9 +5,6 @@ import App from './App.tsx'
 import './index.css'
 import { PushNotifications } from '@capacitor/push-notifications'
 
-// Console log the app logo path for reference
-console.log('App logo path:', '/lovable-uploads/ee92f97b-7f55-4463-855a-74e13564be1f.png')
-
 // Initialize push notifications on app start
 const initializePushNotifications = async () => {
   try {

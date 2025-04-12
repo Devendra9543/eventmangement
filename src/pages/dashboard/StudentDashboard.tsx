@@ -28,15 +28,6 @@ const StudentDashboard = () => {
 
   return (
     <div className="min-h-screen pb-16 bg-gray-50">
-      {/* App Logo */}
-      <div className="flex justify-center py-4 bg-white">
-        <img 
-          src="/lovable-uploads/ee92f97b-7f55-4463-855a-74e13564be1f.png" 
-          alt="Student Organizer Connect" 
-          className="h-14 w-auto"
-        />
-      </div>
-      
       <CollegeBanner />
       <PageHeader 
         title={`Hi, ${extendedUser?.fullName?.split(' ')[0] || 'Student'}`}

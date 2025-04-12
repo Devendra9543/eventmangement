@@ -3,7 +3,7 @@ import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
   appId: 'app.lovable.1bed39bb5f5d4720b4c45d7ecb4fd67e',
-  appName: 'Student Organizer Connect',
+  appName: 'student-organizer-connect',
   webDir: 'dist',
   server: {
     androidScheme: 'https',
@@ -21,13 +21,6 @@ const config: CapacitorConfig = {
   plugins: {
     PushNotifications: {
       presentationOptions: ["badge", "sound", "alert"]
-    },
-    SplashScreen: {
-      launchShowDuration: 2000,
-      backgroundColor: "#FFFFFF",
-      androidSplashResourceName: "splash",
-      splashFullScreen: true,
-      splashImmersive: true
     }
   }
 };
